@@ -122,16 +122,47 @@ class OmniGodBot:
 
                 for frame in all_frames:
     # Erweiterte Selektoren für moderne Foren
-    selectors = [
-        "textarea", 
-        "div[contenteditable='true']", 
-        "input[type='text']", 
-        ".editor-canvas", 
-        "[role='textbox']",
-        ".cke_editable",    # CKEditor (oft in Foren)
-        ".fr-element",      # Froala Editor
-        "#message_html"     # vBulletin / XenForo
-    ]
+   selectors = [
+    # --- Allgemeine & Standard-Felder ---
+    "textarea", 
+    "div[contenteditable='true']", 
+    "[role='textbox']",
+    "input[name='message']",
+    
+    # --- Spezifische Foren-IDs (oft eindeutig) ---
+    "#message",             # Standard vBulletin / phpBB
+    "#vB_Editor_QR_textarea",# vBulletin Quick Reply
+    "#quickreply_textarea", # MyBB
+    "#topic-title",         # Discourse Title
+    "#reply_control textarea", # Discourse Reply
+    "#WoltLabSuite_Core_Component_CKE", # WoltLab Suite
+    
+    # --- Klassen für moderne Editoren (Rich Text) ---
+    ".cke_editable",        # CKEditor (WoltLab, IP.Board)
+    ".fr-element",          # Froala Editor (XenForo 2.x)
+    ".redactor-editor",     # Redactor Editor
+    ".ql-editor",           # Quill Editor
+    ".tox-edit-area",       # TinyMCE
+    ".ProseMirror",         # Moderner Editor (Discourse / Slack-ähnlich)
+    
+    # --- Daten-Attribute & Namen ---
+    "[data-type='wysiwyg']",
+    "textarea[name='post_message']",
+    "textarea[name='comment_text']",
+    "textarea[name='value']",
+    
+    # --- Eingabefelder für "Gast"-Beiträge/Kurzantworten ---
+    ".mce-content-body",
+    "input[name='subject']", # Falls Titel zuerst kommt
+    "#quick_reply_form textarea",
+    ".sceditor-container textarea",
+    
+    # --- Platzhalter-basierte Suche (sehr effektiv) ---
+    "textarea[placeholder*='antworten']",
+    "textarea[placeholder*='schreiben']",
+    "textarea[placeholder*='reply']",
+    "div[data-placeholder*='schreiben']"
+]
                     for sel in selectors:
                         try:
                             field = await frame.query_selector(sel)
