@@ -13,7 +13,8 @@ jobs:
         uses: actions/setup-node@v3
         with:
           node-version: '18'
-      - name: Install Puppeteer
-        run: npm install puppeteer
+      - name: Install Dependencies
+        run: |
+          npm install puppeteer
       - name: Start Bot
         run: node automatik_bot.js
