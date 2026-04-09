@@ -121,7 +121,17 @@ class OmniGodBot:
                 posted = False
 
                 for frame in all_frames:
-                    selectors = ["textarea", "div[contenteditable='true']", "input[type='text']", ".editor-canvas", "[role='textbox']"]
+    # Erweiterte Selektoren für moderne Foren
+    selectors = [
+        "textarea", 
+        "div[contenteditable='true']", 
+        "input[type='text']", 
+        ".editor-canvas", 
+        "[role='textbox']",
+        ".cke_editable",    # CKEditor (oft in Foren)
+        ".fr-element",      # Froala Editor
+        "#message_html"     # vBulletin / XenForo
+    ]
                     for sel in selectors:
                         try:
                             field = await frame.query_selector(sel)
