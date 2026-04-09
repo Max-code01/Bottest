@@ -1,20 +1,21 @@
-name: Schach Bot Automatik
+name: Schach Bot Automatik (Python)
 on:
   schedule:
-    - cron: '0 * * * *' # Läuft jede volle Stunde automatisch
-  workflow_dispatch: # Erlaubt dir, den Bot manuell per Klick zu starten
+    - cron: '0 * * * *'
+  workflow_dispatch:
 
 jobs:
   run-bot:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v3
-      - name: Setup Node.js
-        uses: actions/setup-node@v3
+      - name: Set up Python
+        uses: actions/setup-python@v4
         with:
-          node-version: '18'
+          python-version: '3.9'
       - name: Install Dependencies
         run: |
-          npm install puppeteer
-      - name: Start Bot
-        run: node automatik_bot.js
+          pip install -r requirements.txt
+          playwright install chromium
+      - name: Run Python Bot
+        run: python bot_python.py
