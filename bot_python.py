@@ -9,53 +9,60 @@ async def run_super_bot():
         config = json.load(f)
 
     async with async_playwright() as p:
-        # Browser starten
         browser = await p.chromium.launch(headless=True, args=['--no-sandbox'])
         context = await browser.new_context(
-            user_agent=random.choice(config['user_agents'])
+            user_agent=random.choice(config['user_agents']) #
         )
         page = await context.new_page()
 
-        # Zufälliges Keyword für die Suche wählen
-        keyword = random.choice(config['keywords'])
+        # Zufälliges Keyword wählen
+        keyword = random.choice(config['keywords']) #
         print(f"🚀 Bot sucht nach: {keyword}")
 
-        # Suche auf Bing starten
         await page.goto(f"https://www.bing.com/search?q={keyword}+forum+diskussion")
-        await page.wait_for_timeout(2000)
+        await page.wait_for_timeout(3000)
 
-        # Links von der Suchseite einsammeln
+        # Links sammeln
         links = await page.eval_on_selector_all("li.b_algo h2 a", "nodes => nodes.map(n => n.href)")
 
-        for link in links[:5]: # Besucht die ersten 5 gefundenen Seiten
+        for link in links[:5]:
             try:
                 print(f"🌐 Besuche Seite: {link}")
-                await page.goto(link, timeout=30000)
+                await page.goto(link, timeout=30000, wait_until="networkidle")
                 
-                # Wir überspringen jetzt die Analyse und suchen sofort das Feld
-                print(f"🔍 Suche Kommentarfeld auf {link}...")
-                
-                # Sucht nach Feldern für Kommentare oder Nachrichten
+                # 1. Nachricht eintippen
                 selectors = ["textarea", "input[type='text']", "[contenteditable='true']"]
-                
                 found_field = False
+                
                 for selector in selectors:
-                    if await page.query_selector(selector):
-                        message = random.choice(config['messages'])
-                        await page.fill(selector, message)
+                    field = await page.query_selector(selector)
+                    if field and await field.is_visible():
+                        message = random.choice(config['messages']) #
+                        await field.fill(message)
                         print(f"✅ Nachricht eingetippt auf {link}")
                         found_field = True
-                        # Hier könnte man den Senden-Befehl ergänzen
                         break
                 
-                if not found_field:
-                    print(f"❌ Kein passendes Feld auf {link} gefunden.")
+                # 2. Senden-Button suchen und klicken
+                if found_field:
+                    await page.wait_for_timeout(1000) # Kurz warten für Realismus
+                    # Sucht nach typischen Buttons wie "Senden", "Post", "Antworten"
+                    buttons = await page.query_selector_all("button, input[type='submit']")
+                    for btn in buttons:
+                        text = await btn.inner_text()
+                        if any(x in text.lower() for x in ["senden", "post", "antwort", "submit", "reply", "veröffentlichen"]):
+                            await btn.click()
+                            print(f"🚀 ABSENDEN geklickt auf {link}!")
+                            await page.wait_for_timeout(2000)
+                            break
+                else:
+                    print(f"❌ Kein Feld auf {link}")
 
             except Exception as e:
-                print(f"⚠️ Seite blockiert oder Fehler bei {link}")
+                print(f"⚠️ Fehler oder Blockade bei {link}")
 
         await browser.close()
-        print("✅ Runde beendet.")
+        print("✅ Alle Ziele abgearbeitet.")
 
 if __name__ == "__main__":
     asyncio.run(run_super_bot())
