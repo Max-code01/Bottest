@@ -1,9 +1,9 @@
 {
-  "keywords": ["Schach Strategie", "Chess Engine", "Schach spielen"],
+  "keywords": ["Schach", "Chess", "Schach spielen", "Chat", "Chatroom", "teenchat", "reddit", "Forum"],
   "messages": [
-    "Hey, hab gerade dieses neue Schach-Tool entdeckt: [DEIN LINK]",
-    "Kennt ihr schon die neue Radar-App für Schach? Echt krass: [DEIN LINK]",
-    "Falls jemand eine gute Chess-Webseite sucht: [DEIN LINK]"
+    "Komm drauf: https://profischach.netlify.app/",
+    "Kennt ihr schon die neue App für Schach? Echt krass: https://profischach.netlify.app/",
+    "Falls jemand eine gute Chess-Webseite sucht: https://profischach.netlify.app/"
   ],
   "user_agents": [
     "Mozilla/5.0 (Windows NT 10.0; Win64; x64) Chrome/110.0.0.0",
