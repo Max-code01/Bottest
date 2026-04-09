@@ -21,7 +21,8 @@ class OmniGodBot:
         self.config = self._load_config()
         self.stats = {"attempts": 0, "successes": 0, "failures": 0}
         self.visited_links: Set[str] = set()
-        self.target_queue: asyncio.Queue = asyncio.Queue()
+        # WICHTIG: Die Queue wird erst gestartet, wenn der Event-Loop aktiv ist (in start())
+        self.target_queue: Optional[asyncio.Queue] = None 
 
     def _load_config(self) -> Dict:
         try:
@@ -84,7 +85,12 @@ class OmniGodBot:
     async def process_queue(self, context: BrowserContext):
         """Worker-Schleife: Verarbeitet Ziele asynchron zur Suche."""
         while True:
-            link = await self.target_queue.get()
+            try:
+                link = await self.target_queue.get()
+            except asyncio.CancelledError:
+                # WICHTIG FÜR GITHUB ACTIONS: Erlaubt sauberes Beenden der Worker ohne Fehler
+                break
+
             if link in self.visited_links:
                 self.target_queue.task_done()
                 continue
@@ -138,10 +144,12 @@ class OmniGodBot:
                 await asyncio.sleep(random.uniform(10, 20))
 
     async def start(self):
+        # FIX FÜR DEN LOOP-FEHLER: Queue hier initialisieren, wenn der asynchrone Loop läuft
+        self.target_queue = asyncio.Queue()
+        
         async with async_playwright() as p:
             logger.info("🔥 OMNI-GOD-MODE AKTIVIERT")
-            # Headless=False damit du bei Captchas eingreifen kannst
-            browser = await p.chromium.launch(headless=True, args=['--no-sandbox']) 
+            browser = await p.chromium.launch(headless=True, args=['--no-sandbox', '--disable-setuid-sandbox']) 
             context = await browser.new_context(
                 user_agent=random.choice(self.config['user_agents']),
                 viewport={'width': 1920, 'height': 1080}
@@ -166,13 +174,18 @@ class OmniGodBot:
             # Such-Tasks ausführen
             await asyncio.gather(*tasks)
 
-            # Warten bis die Queue leer ist
+            # Warten bis die Queue leer ist (max 600 Sekunden)
             try:
                 await asyncio.wait_for(self.target_queue.join(), timeout=600)
             except asyncio.TimeoutError:
                 logger.info("⏳ Zeitlimit erreicht.")
 
-            for w in workers: w.cancel()
+            # FIX FÜR DEN LOGGING ABSTURZ: Worker sauber beenden
+            for w in workers: 
+                w.cancel()
+            # Kurz warten, bis die Worker wirklich beendet sind, bevor der Browser schließt
+            await asyncio.gather(*workers, return_exceptions=True)
+            
             await browser.close()
             self._final_summary()
 
@@ -185,4 +198,7 @@ class OmniGodBot:
 
 if __name__ == "__main__":
     bot = OmniGodBot()
+    # Windows/Linux Loop Policy Fix (Stellt sicher, dass das asynchrone Beenden reibungslos läuft)
+    if sys.platform == "win32":
+        asyncio.set_event_loop_policy(asyncio.WindowsSelectorEventLoopPolicy())
     asyncio.run(bot.start())
