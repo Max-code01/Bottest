@@ -63,39 +63,124 @@ class OmniGodBot:
             return msg.replace("[", "").replace("]", "")
         return random.choice(self.config['messages'])
 
-    async def auto_login(self, page: Page, link: str):
-        """EXTREM: Volle Login-Automatisierung für bekannte Domains."""
+  async def auto_login(self, page: Page, link: str):
+        """
+        EXTREM: Kombinierte Login-Automatisierung.
+        1. Prüft auf bekannte Domains.
+        2. Falls nichts gefunden, startet der aggressive Global-Modus auf JEDER Seite.
+        """
         accounts = self._load_accounts()
+        if not accounts:
+            return
+
+        target_acc = None
+        
+        # SCHRITT 1: Spezifischen Account für die Domain suchen
         for acc in accounts:
-            if acc.get("domain") in link:
-                logger.info(f"🔑 Erkenne Account-Pflicht für {acc.get('domain')}. Starte Login...")
+            if acc.get("domain") != "*" and acc.get("domain") in link:
+                target_acc = acc
+                logger.info(f"🔑 Spezifischen Account für {acc.get('domain')} gefunden.")
+                break
+        
+        # SCHRITT 2: Wenn kein spezieller Account da ist, nimm den Global-Key (*)
+        if not target_acc:
+            for acc in accounts:
+                if acc.get("domain") == "*":
+                    target_acc = acc
+                    logger.info(f"🌍 Nutze Global-Account Schlüssel für {link}")
+                    break
+
+        if not target_acc:
+            return
+
+        try:
+            # SCHRITT 3: Login-Trigger aktivieren (Buttons die erst geklickt werden müssen)
+            login_triggers = [
+                "text='Login'", "text='Anmelden'", "text='Sign In'", "text='Einloggen'",
+                ".login", "#login", "a[href*='login']", "button[id*='login']",
+                "a:has-text('Anmelden')", "button:has-text('Login')"
+            ]
+            for trigger in login_triggers:
                 try:
-                    # Riesige Liste an Selektoren für alle Foren-Typen (vBulletin, XenForo, MyBB)
-                    user_selectors = ["input[name*='user']", "input[name*='login']", "input[name*='name']", "input[type='text']", "input[id*='user']", "#login-username"]
-                    pass_selectors = ["input[name*='pass']", "input[type='password']", "input[id*='pass']", "#login-passwd"]
-                    
+                    btn = await page.query_selector(trigger)
+                    if btn and await btn.is_visible():
+                        await btn.click()
+                        await asyncio.sleep(1.5) # Zeit für das Popup/Formular
+                except: continue
+
+            # SCHRITT 4: Aggressives Suchen nach Eingabefeldern
+            user_selectors = [
+                "input[name*='user']", "input[name*='login']", "input[name*='mail']", 
+                "input[name*='name']", "input[type='text']", "input[type='email']", 
+                "input[id*='user']", "input[id*='login']", "#login-username",
+                "input[placeholder*='Nutzer']", "input[placeholder*='User']", 
+                "input[placeholder*='Mail']", "input[placeholder*='Name']"
+            ]
+            
+            pass_selectors = [
+                "input[name*='pass']", "input[type='password']", "input[id*='pass']", 
+                "input[id*='password']", "#login-passwd", "input[placeholder*='Passwort']", 
+                "input[placeholder*='Password']", "input[placeholder*='PW']"
+            ]
+
+            # In allen Frames nach dem User-Feld suchen
+            user_field = None
+            target_frame = page
+            
+            # Erst im Hauptframe suchen
+            for u_sel in user_selectors:
+                try:
+                    f = await page.query_selector(u_sel)
+                    if f and await f.is_visible():
+                        user_field = f
+                        break
+                except: continue
+            
+            # Wenn nicht gefunden, alle Unter-Frames durchsuchen
+            if not user_field:
+                for frame in page.frames:
                     for u_sel in user_selectors:
                         try:
-                            u_field = await page.query_selector(u_sel)
-                            if u_field and await u_field.is_visible():
-                                await u_field.fill(acc['username'])
+                            f = await frame.query_selector(u_sel)
+                            if f and await f.is_visible():
+                                user_field = f
+                                target_frame = frame
                                 break
                         except: continue
-                    
-                    for p_sel in pass_selectors:
-                        try:
-                            p_field = await page.query_selector(p_sel)
-                            if p_field and await p_field.is_visible():
-                                await p_field.fill(acc['password'])
-                                break
-                        except: continue
-                    
-                    await page.keyboard.press("Enter")
-                    await page.wait_for_load_state("networkidle", timeout=5000)
-                    logger.info(f"✅ Login für {acc.get('domain')} abgeschlossen.")
-                    self.stats["logins"] += 1
-                except Exception as e:
-                    logger.error(f"❌ Login-Fehler auf {link}: {e}")
+                    if user_field: break
+
+            if user_field:
+                # Benutzername eintragen
+                await user_field.fill(target_acc['username'])
+                
+                # Passwort-Feld im gleichen Frame suchen
+                for p_sel in pass_selectors:
+                    try:
+                        p_field = await target_frame.query_selector(p_sel)
+                        if p_field and await p_field.is_visible():
+                            await p_field.fill(target_acc['password'])
+                            
+                            logger.info(f"🚀 LOGIN-DATEN EINGEGEBEN: {link}")
+                            
+                            # Absenden
+                            await target_frame.keyboard.press("Enter")
+                            
+                            # Plan B: Login-Button suchen und klicken
+                            await asyncio.sleep(1)
+                            submit_btns = await target_frame.query_selector_all("button[type='submit'], input[type='submit'], .login-button")
+                            for s_btn in submit_btns:
+                                try:
+                                    if await s_btn.is_visible():
+                                        await s_btn.click()
+                                except: continue
+                            
+                            await asyncio.sleep(4) # Warten auf Redirect/Erfolg
+                            self.stats["logins"] += 1
+                            break
+                    except: continue
+
+        except Exception as e:
+            logger.error(f"❌ Schwerer Fehler beim Auto-Login auf {link}: {str(e)[:100]}")
 
     async def solve_captchas(self, page: Page):
         """Sucht nach Google ReCaptcha und Cloudflare."""
