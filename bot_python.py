@@ -161,7 +161,7 @@ class ExtremeBotOmega:
         async with async_playwright() as p:
             logger.info("🔥 STARTING OMEGA ENGINE...")
             # Headless=False ermöglicht das manuelle Eingreifen bei Captchas
-            browser = await p.chromium.launch(headless=False, args=['--no-sandbox'])
+            browser = await p.chromium.launch(headless=True, args=['--no-sandbox'])
             
             context = await browser.new_context(
                 user_agent=random.choice(self.config['user_agents']),
