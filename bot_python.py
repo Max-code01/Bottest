@@ -2,45 +2,61 @@ import json
 import random
 import asyncio
 from playwright.async_api import async_playwright
+from bs4 import BeautifulSoup
 
-async def run_bot():
-    # 1. Deine bestehende bot_config.json laden
+async def analyze_page(html, keywords):
+    """Das 'Gehirn': Prüft, ob die Seite relevant ist."""
+    soup = BeautifulSoup(html, 'html.parser')
+    text = soup.get_text().lower()
+    # Zählt, wie oft deine Keywords auf der Seite vorkommen
+    score = sum(text.count(key.lower()) for key in keywords)
+    return score
+
+async def run_super_bot():
     with open('bot_config.json', 'r') as f:
-        config = json.load(f)
+        config = json.load(f) #
 
     async with async_playwright() as p:
-        # Browser starten (perfekt für GitHub Actions konfiguriert)
-        browser = await p.chromium.launch(headless=True)
-        context = await browser.new_context(
-            user_agent=random.choice(config['user_agents']) #
-        )
+        browser = await p.chromium.launch(headless=True, args=['--no-sandbox'])
+        context = await browser.new_context(user_agent=random.choice(config['user_agents'])) #
         page = await context.new_page()
 
-        # Zufälliges Keyword und Nachricht wählen
         keyword = random.choice(config['keywords']) #
-        message = random.choice(config['messages']) #
+        print(f"🚀 Super-Bot sucht nach: {keyword}")
 
-        print(f"🐍 Python-Bot startet Suche nach: {keyword}")
-
-        # 2. Suche auf Bing (wie im JS-Bot)
-        await page.goto(f"https://www.bing.com/search?q={keyword}+forum")
+        await page.goto(f"https://www.bing.com/search?q={keyword}+forum+diskussion")
         await page.wait_for_timeout(2000)
 
-        # 3. Links einsammeln
         links = await page.eval_on_selector_all("li.b_algo h2 a", "nodes => nodes.map(n => n.href)")
-        print(f"🔍 {len(links)} Links gefunden.")
 
-        for link in links[:5]: # Erstmal nur die ersten 5 testen
+        for link in links[:3]:
             try:
-                print(f"🌐 Checke Seite: {link}")
+                print(f"🧐 Analysiere Seite: {link}")
                 await page.goto(link, timeout=30000)
+                content = await page.content()
                 
-                # Hier können wir später die Login-Logik einbauen
-                print(f"✅ Seite geladen. Würde posten: {message}")
+                # 'Lern'-Phase: Ist das eine gute Seite?
+                relevance = await analyze_page(content, config['keywords']) #
+                
+                if relevance > 2:
+                    print(f"🔥 Hohe Relevanz (Score: {relevance})! Suche Kommentarfeld...")
+                    
+                    # Sucht nach Feldern für Kommentare, Nachrichten oder Antworten
+                    selectors = ["textarea", "input[type='text']", "[contenteditable='true']"]
+                    for selector in selectors:
+                        if await page.query_selector(selector):
+                            message = random.choice(config['messages']) #
+                            await page.fill(selector, message)
+                            print(f"✅ Nachricht platziert auf {link}")
+                            # Hier könnte man jetzt auf 'Senden' klicken
+                            break
+                else:
+                    print(f"😴 Seite nicht relevant genug (Score: {relevance}). Überspringe...")
+
             except Exception as e:
-                print(f"⚠️ Fehler bei {link}")
+                print(f"⚠️ Seite blockiert oder Fehler.")
 
         await browser.close()
 
 if __name__ == "__main__":
-    asyncio.run(run_bot())
+    asyncio.run(run_super_bot())
