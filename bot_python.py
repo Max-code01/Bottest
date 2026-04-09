@@ -3,217 +3,192 @@ import random
 import asyncio
 import logging
 import sys
-from datetime import datetime
 from typing import List, Dict, Optional
-
-# Wir nutzen Playwright für die Browser-Automatisierung
 from playwright.async_api import async_playwright, Page, BrowserContext
 
-# Konfiguration des Loggings für maximale Transparenz
+# === LOGGING FÜR MAXIMALE TRANSPARENZ ===
 logging.basicConfig(
     level=logging.INFO,
     format='%(asctime)s - [%(levelname)s] - %(message)s',
-    handlers=[
-        logging.StreamHandler(sys.stdout),
-        logging.FileHandler('bot_evolution.log', encoding='utf-8')
-    ]
+    handlers=[logging.StreamHandler(sys.stdout)]
 )
-logger = logging.getLogger("ChessBotUltra")
+logger = logging.getLogger("ULTRA_BOT_OMEGA")
 
-class ChessBotPro:
-    """
-    Eine hochoptimierte Bot-Klasse für autonomes Engagement in Schach-Foren.
-    Implementiert Anti-Detection und intelligente Interaktionslogik.
-    """
-
+class ExtremeBotOmega:
     def __init__(self, config_path: str = 'bot_config.json'):
         self.config_path = config_path
         self.config = self._load_config()
         self.stats = {"attempts": 0, "successes": 0, "failures": 0}
-        
+        self.visited_links = set()
+
     def _load_config(self) -> Dict:
-        """Lädt die Konfiguration und validiert die 'parts' Struktur."""
         try:
             with open(self.config_path, 'r', encoding='utf-8') as f:
-                data = json.load(f)
-                logger.info("💎 Konfiguration erfolgreich geladen.")
-                return data
-        except Exception as e:
-            logger.error(f"❌ Fehler beim Laden der Config: {e}")
+                return json.load(f)
+        except:
             return {
                 "keywords": ["Schach"], 
                 "messages": ["Check this out!"], 
-                "user_agents": ["Mozilla/5.0"]
+                "user_agents": ["Mozilla/5.0 (Windows NT 10.0; Win64; x64) Chrome/110.0.0.0"]
             }
 
     async def human_type(self, page: Page, selector: str, text: str):
-        """Simuliert menschliches Tippen mit variabler Geschwindigkeit und Pausen."""
-        await page.wait_for_selector(selector)
+        """Simuliert menschliche Eingaben mit variabler Geschwindigkeit."""
+        await page.wait_for_selector(selector, timeout=10000)
         await page.focus(selector)
-        
         for char in text:
-            # Zufällige Verzögerung zwischen den Anschlägen
-            delay = random.uniform(50, 200) 
-            await page.type(selector, char, delay=delay)
-            
-            # Gelegentliche "Nachdenk-Pause"
-            if random.random() < 0.1:
-                await asyncio.sleep(random.uniform(0.5, 1.5))
+            await page.type(selector, char, delay=random.uniform(20, 80))
+        if random.random() > 0.5:
+            await asyncio.sleep(random.uniform(0.5, 1.5))
 
-    async def simulate_scroll(self, page: Page):
-        """Simuliert das Lesen der Seite durch zufälliges Scrollen."""
-        steps = random.randint(3, 7)
-        for _ in range(steps):
-            scroll_amount = random.randint(200, 600)
-            await page.mouse.wheel(0, scroll_amount)
-            await asyncio.sleep(random.uniform(0.8, 2.0))
-
-    async def find_smart_selector(self, page: Page) -> Optional[str]:
-        """
-        Nutzt ein Scoring-System, um das beste Eingabefeld zu finden.
-        Berücksichtigt die interne Logik für Brackets und Command-Parts.
-        """
-        potential_selectors = [
-            "textarea", 
-            "div[contenteditable='true']", 
-            "input[name*='comment']", 
-            "input[name*='message']",
-            "#comment",
-            ".reply-field"
-        ]
-        
-        for selector in potential_selectors:
+    async def _extract_links(self, page: Page, selectors: List[str]) -> List[str]:
+        """Extrahiert alle Links basierend auf einer Liste von Selektor-Parts."""
+        all_found = []
+        for selector in selectors:
             try:
-                element = await page.query_selector(selector)
-                if element and await element.is_visible():
-                    # Prüfen, ob das Feld groß genug für Text ist
-                    box = await element.bounding_box()
-                    if box and box['height'] > 20:
-                        return selector
+                found = await page.eval_on_selector_all(
+                    selector, 
+                    "nodes => nodes.map(n => n.href)"
+                )
+                all_found.extend(found)
             except:
                 continue
-        return None
+        return [l for l in all_found if l and l.startswith("http")]
 
     async def solve_search(self, page: Page, keyword: str) -> List[str]:
-        """Führt die Suche durch und extrahiert potenzielle Ziele."""
-        search_url = f"https://www.bing.com/search?q={keyword}+forum+community+diskussion"
-        logger.info(f"🔍 Suche gestartet für: '{keyword}'")
+        """Dreistufige Such-Kaskade: Bing -> Google -> DuckDuckGo."""
+        engines = [
+            {
+                "name": "Bing",
+                "url": "https://www.bing.com/search?q={kw}+forum+diskussion&first={offset}",
+                "selectors": ["li.b_algo h2 a", "h2 a"],
+                "cookie_btn": "button#bnp_btn_accept"
+            },
+            {
+                "name": "Google",
+                "url": "https://www.google.com/search?q={kw}+forum+diskussion&start={offset}",
+                "selectors": ["div.g a", "h3", "a h3"],
+                "cookie_btn": "button:has-text('Alle akzeptieren')"
+            },
+            {
+                "name": "DuckDuckGo",
+                "url": "https://duckduckgo.com/html/?q={kw}+forum+diskussion",
+                "selectors": ["a.result__a", "h2 a", "a"],
+                "cookie_btn": None
+            }
+        ]
+
+        final_links = []
+        for engine in engines:
+            logger.info(f"🚀 Versuche Engine: {engine['name']}...")
+            for page_idx in range(3):  # Jeweils 3 Seiten tief
+                offset = page_idx * 10
+                target_url = engine['url'].format(kw=keyword, offset=offset)
+                
+                try:
+                    await page.goto(target_url, wait_until="networkidle", timeout=60000)
+                    if engine['cookie_btn']:
+                        try:
+                            await page.click(engine['cookie_btn'], timeout=3000)
+                        except: pass
+                    
+                    await page.wait_for_timeout(2000)
+                    links = await self._extract_links(page, engine['selectors'])
+                    
+                    if links:
+                        # FILTER ENTFERNT: Jede URL wird genommen
+                        final_links.extend(links)
+                        logger.info(f"✅ {len(links)} Links von {engine['name']} (Seite {page_idx+1}) extrahiert.")
+                except Exception as e:
+                    logger.warning(f"⚠️ Fehler bei {engine['name']}: {str(e)[:50]}")
+                    break
+            
+            if final_links:
+                break # Wenn eine Engine geliefert hat, springen wir zur Verarbeitung
         
-        await page.goto(search_url, wait_until="networkidle")
-        await asyncio.sleep(random.uniform(2, 4))
-        
-        # Extraktion mit verbesserter Selektor-Logik
-        links = await page.eval_on_selector_all(
-            "li.b_algo h2 a", 
-            "nodes => nodes.map(n => n.href)"
-        )
-        
-        # Filterung von Junk-Links
-        filtered_links = [l for l in links if "microsoft.com" not in l and "bing.com" not in l]
-        logger.info(f"🎯 {len(filtered_links)} relevante Ziele identifiziert.")
-        return filtered_links
+        return list(set(final_links))
 
     async def process_target(self, context: BrowserContext, link: str):
-        """Bearbeitet ein einzelnes Ziel mit maximaler Vorsicht."""
+        """Bearbeitet ein Ziel mit optimierter Feldsuche."""
+        if link in self.visited_links: return
+        self.visited_links.add(link)
+        
         page = await context.new_page()
         self.stats["attempts"] += 1
         
         try:
-            logger.info(f"🌐 Anflug auf Ziel: {link}")
-            # Timeout erhöht für langsame Foren
+            logger.info(f"🌐 Navigiere zu: {link}")
             await page.goto(link, timeout=45000, wait_until="domcontentloaded")
             
-            # 1. Menschliches Verhalten vortäuschen
-            await self.simulate_scroll(page)
-            
-            # 2. Feld suchen
-            selector = await self.find_smart_selector(page)
-            if not selector:
-                logger.warning(f"⏩ Kein passendes Eingabefeld auf {link} gefunden.")
-                return
-
-            # 3. Nachricht vorbereiten
-            message = random.choice(self.config['messages'])
-            
-            # 4. Tippen
-            logger.info(f"✍️ Schreibe Nachricht auf {link}...")
-            await self.human_type(page, selector, message)
-            
-            # 5. Absenden-Logik (vorsichtig!)
-            # Wir suchen nach typischen Buttons
-            button_selectors = [
-                "button[type='submit']", 
-                "input[type='submit']", 
-                "button:has-text('Post')", 
-                "button:has-text('Senden')",
-                "button:has-text('Antworten')"
+            # Dynamische Feldsuche (Parts-Logik)
+            field_parts = [
+                "textarea", "div[contenteditable='true']", 
+                "input[name*='message']", "input[name*='comment']",
+                "#comment", ".reply-field", ".editor", "input[type='text']"
             ]
             
-            for btn_selector in button_selectors:
-                btn = await page.query_selector(btn_selector)
-                if btn and await btn.is_visible():
-                    await asyncio.sleep(random.uniform(1, 3))
-                    # Optional: Klick aktivieren, wenn man sich sicher ist
-                    await btn.click() 
-                    logger.info(f"🚀 [SIMULATION] Button '{btn_selector}' wurde identifiziert.")
-                    self.stats["successes"] += 1
-                    break
-                    
+            target_selector = None
+            for part in field_parts:
+                try:
+                    element = await page.query_selector(part)
+                    if element and await element.is_visible():
+                        target_selector = part
+                        break
+                except: continue
+
+            if target_selector:
+                message = random.choice(self.config['messages'])
+                await self.human_type(page, target_selector, message)
+                
+                # Senden-Logik
+                submit_selectors = ["button[type='submit']", "input[type='submit']", "button:has-text('Post')"]
+                for sub in submit_selectors:
+                    btn = await page.query_selector(sub)
+                    if btn and await btn.is_visible():
+                        await btn.click()
+                        logger.info(f"🚀 ERFOLGREICH GEPOSCHT: {link}")
+                        self.stats["successes"] += 1
+                        return
+            else:
+                self.stats["failures"] += 1
+                
         except Exception as e:
-            logger.error(f"⚠️ Fehler bei {link}: {str(e)[:50]}...")
-            self.stats["failures"] += 1
+            logger.debug(f"⏩ Seite übersprungen: {link}")
         finally:
             await page.close()
 
     async def run(self):
-        """Hauptschleife des Bots."""
         async with async_playwright() as p:
-            logger.info("🔥 Starte Engine...")
-            browser = await p.chromium.launch(
-                headless=True, 
-                args=[
-                    '--no-sandbox', 
-                    '--disable-setuid-sandbox',
-                    '--disable-blink-features=AutomationControlled' # Anti-Bot Flag
-                ]
-            )
+            logger.info("🔥 STARTING OMEGA ENGINE...")
+            # Headless=False ermöglicht das manuelle Eingreifen bei Captchas
+            browser = await p.chromium.launch(headless=False, args=['--no-sandbox'])
             
-            # Erstelle einen Kontext mit realistischem Fingerprint
-            user_agent = random.choice(self.config['user_agents'])
             context = await browser.new_context(
-                user_agent=user_agent,
+                user_agent=random.choice(self.config['user_agents']),
                 viewport={'width': 1920, 'height': 1080}
             )
 
-            keyword = random.choice(self.config['keywords'])
-            search_page = await context.new_page()
-            
-            target_links = await self.solve_search(search_page, keyword)
-            await search_page.close()
+            for kw in self.config['keywords']:
+                search_page = await context.new_page()
+                targets = await self.solve_search(search_page, kw)
+                await search_page.close()
 
-            # Verarbeite Ziele nacheinander (für Stabilität)
-            for link in target_links[:8]: # Top 8 Ergebnisse
-                await self.process_target(context, link)
-                # Pause zwischen den Seiten zur Abkühlung
-                cooldown = random.randint(10, 30)
-                logger.info(f"⏳ Cooldown für {cooldown}s...")
-                await asyncio.sleep(cooldown)
+                # Alle gefundenen Ziele abarbeiten
+                for target in targets:
+                    await self.process_target(context, target)
+                    await asyncio.sleep(random.uniform(5, 15))
 
             await browser.close()
             self._print_summary()
 
     def _print_summary(self):
-        """Zusammenfassung der Session."""
-        print("\n" + "="*40)
-        print("📊 MISSION SUMMARY")
-        print(f"Gesamtversuche: {self.stats['attempts']}")
-        print(f"Erfolge (identifiziert): {self.stats['successes']}")
-        print(f"Fehlgeschlagen: {self.stats['failures']}")
-        print("="*40 + "\n")
+        print("\n" + "="*50)
+        print("📊 OMEGA SESSION COMPLETED")
+        print(f"Gesamtziele gefunden: {len(self.visited_links)}")
+        print(f"Erfolgreiche Interaktionen: {self.stats['successes']}")
+        print(f"Fehlversuche: {self.stats['failures']}")
+        print("="*50 + "\n")
 
 if __name__ == "__main__":
-    bot = ChessBotPro()
-    try:
-        asyncio.run(bot.run())
-    except KeyboardInterrupt:
-        logger.info("🛑 Bot durch Nutzer gestoppt.")
+    bot = ExtremeBotOmega()
+    asyncio.run(bot.run())
