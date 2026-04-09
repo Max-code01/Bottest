@@ -175,8 +175,8 @@ class OmniGodBot:
                                 buttons = await frame.query_selector_all("button, input[type='submit']")
                                 for b in buttons:
                                     t = await b.inner_text()
-                                    if any(x in t.lower() for x in ["post", "send", "antwort", "reply", "submit", "veröffentlichen"]):
-                                        await b.click()
+                                    if any(x in t.lower() for x in ["post", "send", "antwort", "reply", "submit", "absenden", "erstellen", "abschicken"]):
+    await b.click()
                                         break
                                 
                                 logger.info(f"🚀 ERFOLGREICH: {link}")
