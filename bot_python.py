@@ -1,3 +1,4 @@
+import google.generativeai as genai
 import json
 import random
 import asyncio
@@ -148,22 +149,50 @@ class ProxyManager:
 # ==============================================================================
 # === NEU: INTELLIGENT CONTENT GENERATOR ===
 # ==============================================================================
-class IntelligentContentGenerator:
-    """Generiert menschlich wirkende Nachrichten-Variationen für Schachforen und Chats."""
-    @staticmethod
-    def generate_chess_comment() -> str:
-        intros = ["Hey Leute,", "Moin Schachfreunde!", "Hab mal ne Frage...", "Cooler Thread hier."]
-        middles = [
-            "Was haltet ihr von dieser neuen Analyse-Plattform?",
-            "Ich habe nach einer Alternative zu den großen Seiten gesucht und das hier gefunden:",
-            "Falls jemand sein Endspiel trainieren will, schaut euch das mal an:",
-            "Endlich mal ein cleanes Interface für Schach-Fans."
-        ]
-        links = ["https://profischach.netlify.app/"]
-        outros = ["Viel Erfolg!", "Eure Meinung dazu?", "Danke und LG!", "See you on the board."]
+# ==============================================================================
+# === VERSCHMOLZEN: AI & CONTEXT GENERATOR (GEMINI POWERED) ===
+# ==============================================================================
+class IntelligentAIPro:
+    """Kombiniert Gemini-KI mit deiner Profischach-Werbung."""
+    
+    def __init__(self):
+        # Dein Key und das Modell
+        self.api_key = "AIzaSyBjYBRohweWpdMDsM9mqLKH9VHOH2D8o3I"
+        genai.configure(api_key=self.api_key)
+        self.model = genai.GenerativeModel('gemini-1.5-flash')
         
-        return f"{random.choice(intros)} {random.choice(middles)} {random.choice(links)} {random.choice(outros)}"
+        # Deine Website-Infos für die KI
+        self.target_link = "https://profischach.netlify.app/"
+        self.description = "Eine neue, saubere Plattform für Schach, Chat und eine Alternative zu großen Seiten."
 
+    async def get_page_context(self, page_or_frame) -> str:
+        """Liest den Foren-Thread, damit die Antwort perfekt passt."""
+        try:
+            return await page_or_frame.evaluate("() => document.body.innerText.substring(0, 1200)")
+        except:
+            return "Allgemeine Schach-Diskussion."
+
+    async def generate_smart_message(self, context: str) -> str:
+        """Verschmilzt KI-Intelligenz mit deiner Werbe-Absicht."""
+        prompt = (
+            f"Du bist ein aktiver Nutzer in einem Schach-Forum. "
+            f"Das ist der aktuelle Thread-Inhalt: '{context}'\n\n"
+            f"Schreibe eine kurze, menschliche Antwort (1-2 Sätze). "
+            f"Gehe kurz auf das Thema ein und empfehle dann natürlich die Seite {self.target_link}. "
+            f"Info zur Seite: {self.description}. "
+            f"WICHTIG: Antworte wie ein Mensch, locker, keine KI-Floskeln, kein 'Ich als KI', "
+            f"kein förmliches 'Sehr geehrte Damen und Herren'."
+        )
+        
+        try:
+            response = self.model.generate_content(prompt)
+            return response.text.strip().replace('"', '')
+        except Exception as e:
+            logger.error(f"KI-Fehler: {e}. Nutze Fallback-Nachricht.")
+            # Fallback (deine alte Logik), falls Gemini streikt
+            intros = ["Hey Leute,", "Moin Schachfreunde!", "Hab mal ne Frage..."]
+            middles = ["Schon gesehen? Die Seite ist echt top für Endspiele:", "Coole Alternative hier:"]
+            return f"{random.choice(intros)} {random.choice(middles)} {self.target_link}"
 # ==============================================================================
 # === STEALTH-SYSTEME (MASSIV ERWEITERT) ===
 # ==============================================================================
@@ -336,6 +365,7 @@ class OmniGodBot:
         self.db = DatabaseManager()
         self.notifier = NotificationManager()
         self.proxies = ProxyManager()
+        self.ai_brain = IntelligentAIPro()
         self.session_file = 'session_v3.json'
         self.accounts_file = 'accounts.json'
         self.is_running = True
@@ -441,51 +471,72 @@ class OmniGodBot:
         except: pass
 
     async def try_post_in_frame(self, frame, link: str) -> bool:
-        """Sucht Felder in Frames (oft in Foren genutzt)."""
+        """
+        Sucht Felder in Frames, generiert KI-Beiträge basierend auf dem 
+        Seiteninhalt und schickt den Post ab.
+        """
         selectors = [
             "textarea", "div[contenteditable='true']", "[role='textbox']", 
             "#message", ".cke_editable", "textarea[name='comment_text']",
             "input[name='message']", ".redactor-editor", "#quick_reply_textarea",
             "iframe[title*='Rich Text']", ".message-editor"
         ]
+
         for sel in selectors:
             try:
+                # 1. Feld suchen
                 field = await frame.wait_for_selector(sel, timeout=4000, state="visible")
                 if field:
-                    logger.info(f"🎯 Feld gefunden: {sel} auf {link}")
+                    logger.info(f"🎯 Feld gefunden: {sel} auf {link}. Generiere KI-Beitrag...")
                     await field.scroll_into_view_if_needed()
-                    msg = self._build_message()
-                    
-                    # Falls es ein Iframe-Editor ist
+
+                    # 2. KI-KONTEXT UND GENERIERUNG (Verschmelzung)
+                    # Wir lesen erst, was auf der Seite steht
+                    page_context = await self.ai_brain.get_page_context(frame)
+                    # Gemini erstellt die passende Antwort für profischach.netlify.app
+                    smart_msg = await self.ai_brain.generate_smart_message(page_context)
+
+                    # 3. TEXT EINGEBEN
+                    # Falls es ein Rich-Text-Iframe ist (wie bei vielen Foren)
                     if (await field.evaluate("e => e.tagName")) == "IFRAME":
                         content_frame = await field.content_frame()
                         if content_frame:
-                            await content_frame.fill("body", msg)
+                            await content_frame.fill("body", smart_msg)
                         else: continue
                     else:
                         await field.click()
-                        await CognitiveHumanTyping.type_like_human(field, msg)
+                        # Nutzt dein menschliches Tipp-Verhalten
+                        await CognitiveHumanTyping.type_like_human(field, smart_msg)
                     
                     await asyncio.sleep(2)
                     
-                    # Senden-Buttons
+                    # 4. SENDEN-LOGIK
                     submit_selectors = [
                         "button[type='submit']", "input[type='submit']", 
                         "button:has-text('Post')", "button:has-text('Send')",
                         "button:has-text('Antworten')", ".submit-btn", "button:has-text('Abschicken')"
                     ]
+                    
                     for s_sel in submit_selectors:
                         btn = await frame.query_selector(s_sel)
                         if btn and await btn.is_visible():
                             await btn.click()
-                            logger.info(f"🚀 Post abgeschickt auf {link}")
-                            self.db.add_success(link, msg)
+                            logger.info(f"🚀 KI-Post erfolgreich abgeschickt auf {link}")
+                            self.stats['successes'] += 1
+                            self.db.add_success(link, smart_msg)
                             return True
                     
-                    # Shortcut Fallback
+                    # Shortcut Fallback (Strg+Enter), falls kein Button gefunden wurde
                     await frame.keyboard.press("Control+Enter")
+                    logger.info(f"🚀 Post via Shortcut abgeschickt auf {link}")
+                    self.stats['successes'] += 1
+                    self.db.add_success(link, smart_msg)
                     return True
-            except: continue
+
+            except Exception as e:
+                logger.debug(f"Versuch mit Selektor {sel} fehlgeschlagen: {e}")
+                continue
+        
         return False
 
     async def process_queue(self, context: BrowserContext):
