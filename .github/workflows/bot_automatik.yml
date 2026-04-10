@@ -9,13 +9,28 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v3
+
       - name: Set up Python
         uses: actions/setup-python@v4
         with:
           python-version: '3.9'
+
       - name: Install Dependencies
         run: |
           pip install -r requirements.txt
           playwright install chromium
+          # Installiert notwendige System-Bibliotheken für den Browser
+          playwright install-deps chromium
+
       - name: Run Python Bot
-        run: python bot_python.py
+        # xvfb-run simuliert einen Monitor, damit der Browser starten kann
+        run: xvfb-run python bot_python.py
+
+      - name: Upload Screenshots
+        # Dieser Schritt lädt die Bilder hoch, damit du sie nach dem Run anschauen kannst
+        if: always() # Wird auch ausgeführt, wenn der Bot oben Fehler macht
+        uses: actions/upload-artifact@v4
+        with:
+          name: bot-fehler-analyse
+          path: error_*.png
+          retention-days: 1
