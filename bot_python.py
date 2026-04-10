@@ -723,7 +723,7 @@ class OmniGodBot:
             self.notifier.send_report("OmniGodBot V3 ULTIMATE - Final Status", report)
             print(report)
             def generate_live_dashboard(self):
-        """Erstellt die HTML-Datei lokal."""
+                """Erstellt die HTML-Datei lokal."""
         html_content = f"""
         <html>
         <head>
