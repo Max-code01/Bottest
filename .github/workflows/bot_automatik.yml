@@ -1,8 +1,8 @@
 name: Schach Bot Automatik (Python)
 on:
   schedule:
-    - cron: '0 * * * *'
-  workflow_dispatch:
+    - cron: '0 * * * *' # Läuft jede Stunde automatisch
+  workflow_dispatch: # Erlaubt es dir, den Bot jederzeit manuell zu starten
 
 jobs:
   run-bot:
@@ -13,7 +13,7 @@ jobs:
       - name: Set up Python
         uses: actions/setup-python@v4
         with:
-          python-version: '3.9'
+          python-version: '3.10' # Auf 3.10 erhöht für bessere KI-Kompatibilität
 
       - name: Install Dependencies
         run: |
@@ -23,14 +23,21 @@ jobs:
           playwright install-deps chromium
 
       - name: Run Python Bot
-        # xvfb-run simuliert einen Monitor, damit der Browser starten kann
-        run: xvfb-run python bot_python.py
+        # Hier binden wir deinen KI-Schlüssel sicher über die GitHub Secrets ein
+        env:
+          GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
+        # xvfb-run simuliert einen Monitor. --auto-servernum verhindert Abstürze.
+        run: xvfb-run --auto-servernum python bot_python.py
 
-      - name: Upload Screenshots
-        # Dieser Schritt lädt die Bilder hoch, damit du sie nach dem Run anschauen kannst
-        if: always() # Wird auch ausgeführt, wenn der Bot oben Fehler macht
+      - name: Upload Dashboard and Screenshots
+        # Dieser Schritt lädt dein Dashboard, Logs und Bilder hoch
+        if: always() # Wird immer ausgeführt, auch wenn der Bot einen Fehler hatte
         uses: actions/upload-artifact@v4
         with:
-          name: bot-fehler-analyse
-          path: error_*.png
+          name: bot-live-status-dashboard
+          path: |
+            index.html
+            latest_action.png
+            ultra_god_mode_v3_EXTREME.log
+            error_*.png
           retention-days: 1
