@@ -159,7 +159,7 @@ class IntelligentAIPro:
         # Dein Key und das Modell
         self.api_key = "AIzaSyBjYBRohweWpdMDsM9mqLKH9VHOH2D8o3I"
         genai.configure(api_key=self.api_key)
-        self.model = genai.GenerativeModel('models/gemini-1.5-flash-latest')
+        self.model = genai.GenerativeModel('gemini-1.5-flash')
         
         # Deine Website-Infos für die KI
         self.target_link = "https://profischach.netlify.app/"
