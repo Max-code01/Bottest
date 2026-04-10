@@ -522,6 +522,7 @@ class OmniGodBot:
                         if btn and await btn.is_visible():
                             await btn.click()
                             logger.info(f"🚀 KI-Post erfolgreich abgeschickt auf {link}")
+                            await page.screenshot(path="latest_action.png")
                             self.stats['successes'] += 1
                             self.db.add_success(link, smart_msg)
                             return True
@@ -719,6 +720,42 @@ class OmniGodBot:
             report = self._generate_report()
             self.notifier.send_report("OmniGodBot V3 ULTIMATE - Final Status", report)
             print(report)
+            # --- HIER DIE FUNKTION EINFÜGEN (eingerückt!) ---
+    def generate_live_dashboard(self):
+        """Erstellt eine HTML-Datei für das Live-Monitoring."""
+        html_content = f"""
+        <html>
+        <head>
+            <title>OmniGodBot Live Status</title>
+            <style>
+                body {{ font-family: sans-serif; background: #121212; color: white; text-align: center; padding: 50px; }}
+                .stats {{ display: flex; justify-content: center; gap: 20px; margin-bottom: 30px; }}
+                .card {{ background: #1e1e1e; padding: 20px; border-radius: 10px; border: 1px solid #333; min-width: 150px; }}
+                h3 {{ color: #007bff; margin-top: 0; }}
+                p {{ font-size: 24px; font-weight: bold; margin: 0; }}
+                img {{ max-width: 80%; border: 4px solid #333; border-radius: 10px; box-shadow: 0 0 20px rgba(0,123,255,0.2); }}
+                .time {{ color: #888; margin-top: 20px; }}
+            </style>
+        </head>
+        <body>
+            <h1>🤖 OmniGodBot Live Monitor</h1>
+            <div class="stats">
+                <div class="card"><h3>Erfolge</h3><p>{self.stats['successes']}</p></div>
+                <div class="card"><h3>Versuche</h3><p>{self.stats['attempts']}</p></div>
+                <div class="card"><h3>Links gefunden</h3><p>{self.stats['links_found']}</p></div>
+            </div>
+            <h2>Letzte Bot-Aktion:</h2>
+            <img src="latest_action.png" alt="Bot Action Screenshot">
+            <p class="time">Letzte Aktualisierung: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}</p>
+        </body>
+        </html>
+        """
+        try:
+            with open("index.html", "w", encoding="utf-8") as f:
+                f.write(html_content)
+            logger.info("📊 Live-Dashboard (index.html) wurde erstellt.")
+        except Exception as e:
+            logger.error(f"Fehler beim Erstellen des Dashboards: {e}")
 
     def _generate_report(self) -> str:
         rep = f"""
