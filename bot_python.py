@@ -361,7 +361,7 @@ class OmniGodBot:
             "chat_messages": 0
         }
         self.visited_links: Set[str] = set()
-        self.target_queue: asyncio.Queue = asyncio.Queue()
+        self.target_queue = None
         self.db = DatabaseManager()
         self.notifier = NotificationManager()
         self.proxies = ProxyManager()
@@ -653,6 +653,7 @@ class OmniGodBot:
             await page.close()
 
     async def start(self):
+        self.target_queue = asyncio.Queue()
         """Haupt-Orchestrierung des Bots."""
         async with async_playwright() as p:
             logger.info("🔥 ULTRA-GOD-MODE V3 ULTIMATE AKTIVIERT. REICHWEITE: GLOBAL.")
