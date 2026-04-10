@@ -441,7 +441,7 @@ class OmniGodBot:
             logger.info("🔥 ULTRA-GOD-MODE V3 AKTIVIERT. REICHWEITE: MAXIMAL.")
             
             proxy_config = self.proxies.get_random_proxy()
-            browser = await p.chromium.launch(headless=False, args=[
+            browser = await p.chromium.launch(headless=True, args=[
                 '--no-sandbox', '--disable-setuid-sandbox',
                 '--disable-blink-features=AutomationControlled',
                 '--window-size=1920,1080', '--mute-audio'
