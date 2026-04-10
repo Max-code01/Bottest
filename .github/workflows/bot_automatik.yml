@@ -7,31 +7,35 @@ on:
 jobs:
   run-bot:
     runs-on: ubuntu-latest
+    # WICHTIG: Das hier erlaubt dem Bot, das Live-Dashboard in dein Repo zu pushen
+    permissions:
+      contents: write
+    
     steps:
       - uses: actions/checkout@v3
+        with:
+          fetch-depth: 0 # Lädt die gesamte History für saubere Git-Pushes
 
       - name: Set up Python
         uses: actions/setup-python@v4
         with:
-          python-version: '3.10' # Auf 3.10 erhöht für bessere KI-Kompatibilität
+          python-version: '3.10'
 
       - name: Install Dependencies
         run: |
           pip install -r requirements.txt
           playwright install chromium
-          # Installiert notwendige System-Bibliotheken für den Browser
           playwright install-deps chromium
 
       - name: Run Python Bot
-        # Hier binden wir deinen KI-Schlüssel sicher über die GitHub Secrets ein
         env:
           GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
-        # xvfb-run simuliert einen Monitor. --auto-servernum verhindert Abstürze.
+          # Das GITHUB_TOKEN wird für den automatischen Live-Push benötigt
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: xvfb-run --auto-servernum python bot_python.py
 
       - name: Upload Dashboard and Screenshots
-        # Dieser Schritt lädt dein Dashboard, Logs und Bilder hoch
-        if: always() # Wird immer ausgeführt, auch wenn der Bot einen Fehler hatte
+        if: always()
         uses: actions/upload-artifact@v4
         with:
           name: bot-live-status-dashboard
