@@ -781,14 +781,23 @@ class OmniGodBot:
 # ==============================================================================
 if __name__ == "__main__":
     bot = OmniGodBot()
+    
     # Windows Selector Loop Fix
     if sys.platform == "win32":
         asyncio.set_event_loop_policy(asyncio.WindowsSelectorEventLoopPolicy())
         
     try:
+        # Startet den Bot
         asyncio.run(bot.start())
     except KeyboardInterrupt:
         logger.info("🛑 Bot manuell durch User gestoppt.")
     except Exception as e:
         logger.critical(f"💥 KRITISCHER SYSTEMFEHLER: {e}")
         traceback.print_exc()
+    finally:
+        # WICHTIG: Erstellt das Dashboard IMMER, egal ob Erfolg oder Fehler
+        try:
+            bot.generate_live_dashboard()
+            logger.info("🏁 Finales Dashboard wurde vor dem Beenden gesichert.")
+        except Exception as dash_e:
+            logger.error(f"⚠️ Dashboard konnte nicht erstellt werden: {dash_e}")
