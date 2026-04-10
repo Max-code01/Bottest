@@ -568,6 +568,8 @@ class OmniGodBot:
                 # SPEZIAL-CHECK: Chatrooms
                 if await PlatformSpecialist.handle_chatroom_2000(page):
                     self.stats["successes"] += 1
+                    self.generate_live_dashboard()
+                    self.push_live_update()
                     self.stats["chat_messages"] += 1
                     self.db.add_visited(link, "CHAT_SUCCESS")
                     continue
@@ -721,8 +723,8 @@ class OmniGodBot:
             self.notifier.send_report("OmniGodBot V3 ULTIMATE - Final Status", report)
             print(report)
             # --- HIER DIE FUNKTION EINFÜGEN (eingerückt!) ---
-    def generate_live_dashboard(self):
-        """Erstellt eine HTML-Datei für das Live-Monitoring."""
+   def generate_live_dashboard(self):
+        """Erstellt die HTML-Datei lokal."""
         html_content = f"""
         <html>
         <head>
@@ -733,8 +735,7 @@ class OmniGodBot:
                 .card {{ background: #1e1e1e; padding: 20px; border-radius: 10px; border: 1px solid #333; min-width: 150px; }}
                 h3 {{ color: #007bff; margin-top: 0; }}
                 p {{ font-size: 24px; font-weight: bold; margin: 0; }}
-                img {{ max-width: 80%; border: 4px solid #333; border-radius: 10px; box-shadow: 0 0 20px rgba(0,123,255,0.2); }}
-                .time {{ color: #888; margin-top: 20px; }}
+                img {{ max-width: 80%; border: 4px solid #333; border-radius: 10px; }}
             </style>
         </head>
         <body>
@@ -744,19 +745,28 @@ class OmniGodBot:
                 <div class="card"><h3>Versuche</h3><p>{self.stats['attempts']}</p></div>
                 <div class="card"><h3>Links gefunden</h3><p>{self.stats['links_found']}</p></div>
             </div>
-            <h2>Letzte Bot-Aktion:</h2>
-            <img src="latest_action.png" alt="Bot Action Screenshot">
-            <p class="time">Letzte Aktualisierung: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}</p>
+            <h2>Letzte Aktion:</h2>
+            <img src="latest_action.png" alt="Screenshot">
+            <p>Letztes Update: {datetime.now().strftime('%H:%M:%S')}</p>
         </body>
         </html>
         """
-        try:
-            with open("index.html", "w", encoding="utf-8") as f:
-                f.write(html_content)
-            logger.info("📊 Live-Dashboard (index.html) wurde erstellt.")
-        except Exception as e:
-            logger.error(f"Fehler beim Erstellen des Dashboards: {e}")
+        with open("index.html", "w", encoding="utf-8") as f:
+            f.write(html_content)
 
+    def push_live_update(self):
+        """Lädt die Dateien während der Bot läuft auf GitHub hoch."""
+        try:
+            # Diese Befehle sagen GitHub, wer das Update macht
+            subprocess.run(["git", "config", "user.name", "Bot-Update"], check=False)
+            subprocess.run(["git", "config", "user.email", "bot@update.com"], check=False)
+            # Dateien hinzufügen und hochladen
+            subprocess.run(["git", "add", "index.html", "latest_action.png"], check=False)
+            subprocess.run(["git", "commit", "-m", "📊 Live-Status Update"], check=False)
+            subprocess.run(["git", "push"], check=False)
+            logger.info("🚀 Dashboard live auf GitHub Pages gepusht!")
+        except Exception as e:
+            logger.error(f"Push fehlgeschlagen: {e}")
     def _generate_report(self) -> str:
         rep = f"""
         📊 OMNI-GOD-BOT V3 ULTIMATE REPORT (EXTREME EDITION)
