@@ -9,26 +9,31 @@ import math
 import time
 import sqlite3
 import smtplib
+import traceback
 from email.mime.text import MIMEText
 from email.mime.multipart import MIMEMultipart
 from datetime import datetime
-from typing import List, Dict, Set, Optional, Any
-from playwright.async_api import async_playwright, Page, BrowserContext, ElementHandle, Browser
+from typing import List, Dict, Set, Optional, Any, Union
+from playwright.async_api import async_playwright, Page, BrowserContext, ElementHandle, Browser, Frame
 
-# === MAXIMALE LOGGING KONFIGURATION ===
+# ==============================================================================
+# === MAXIMALE LOGGING & DEBUG KONFIGURATION (ERWEITERT) ===
+# ==============================================================================
 logging.basicConfig(
     level=logging.INFO,
-    format='%(asctime)s - [%(levelname)s] - %(message)s',
-    handlers=[logging.StreamHandler(sys.stdout), logging.FileHandler('ultra_god_mode_v3.log', encoding='utf-8')]
+    format='%(asctime)s - [%(levelname)s] - [%(name)s] - %(message)s',
+    handlers=[
+        logging.StreamHandler(sys.stdout), 
+        logging.FileHandler('ultra_god_mode_v3_EXTREME.log', encoding='utf-8')
+    ]
 )
-logger = logging.getLogger("ULTRA_GOD_MODE_V3")
+logger = logging.getLogger("ULTRA_GOD_MODE_V3_ULTIMATE")
 
-# ==========================================
-# NEU: DATENBANK-MANAGER FÜR PERSISTENZ
-# ==========================================
-
+# ==============================================================================
+# === DATENBANK-MANAGER FÜR PERSISTENZ (BESTEHEND & ERWEITERT) ===
+# ==============================================================================
 class DatabaseManager:
-    """Verwaltet besuchte URLs und Erfolge in einer SQLite-Datenbank."""
+    """Verwaltet besuchte URLs und Erfolge in einer SQLite-Datenbank mit erweiterten Metadaten."""
     def __init__(self, db_path: str = "bot_data.db"):
         self.db_path = db_path
         self._setup()
@@ -36,10 +41,16 @@ class DatabaseManager:
     def _setup(self):
         conn = sqlite3.connect(self.db_path)
         cursor = conn.cursor()
+        # Bestehende Tabellen
         cursor.execute('''CREATE TABLE IF NOT EXISTS visited_urls 
                           (url TEXT PRIMARY KEY, status TEXT, timestamp DATETIME)''')
         cursor.execute('''CREATE TABLE IF NOT EXISTS successes 
                           (url TEXT, message TEXT, timestamp DATETIME)''')
+        # Neue Analytik-Tabellen für die Expansion
+        cursor.execute('''CREATE TABLE IF NOT EXISTS platform_types 
+                          (domain TEXT PRIMARY KEY, type TEXT, last_seen DATETIME)''')
+        cursor.execute('''CREATE TABLE IF NOT EXISTS captcha_events 
+                          (url TEXT, detected_at DATETIME, solved BOOLEAN)''')
         conn.commit()
         conn.close()
 
@@ -51,7 +62,8 @@ class DatabaseManager:
                            (url, status, datetime.now()))
             conn.commit()
             conn.close()
-        except: pass
+        except Exception as e:
+            logger.error(f"DB Error (visited): {e}")
 
     def add_success(self, url: str, message: str):
         try:
@@ -61,12 +73,22 @@ class DatabaseManager:
                            (url, message, datetime.now()))
             conn.commit()
             conn.close()
+        except Exception as e:
+            logger.error(f"DB Error (success): {e}")
+
+    def log_platform(self, domain: str, p_type: str):
+        try:
+            conn = sqlite3.connect(self.db_path)
+            cursor = conn.cursor()
+            cursor.execute("INSERT OR REPLACE INTO platform_types VALUES (?, ?, ?)", 
+                           (domain, p_type, datetime.now()))
+            conn.commit()
+            conn.close()
         except: pass
 
-# ==========================================
-# NEU: EMAIL-NOTIFIKATIONSSYSTEM
-# ==========================================
-
+# ==============================================================================
+# === EMAIL-NOTIFIKATIONSSYSTEM (BESTEHEND) ===
+# ==============================================================================
 class NotificationManager:
     """Sendet Berichte an den hinterlegten Google-Account."""
     def __init__(self, email: str = "max.schule13@gmail.com"):
@@ -75,7 +97,7 @@ class NotificationManager:
         self.password = "Max1234567890123" # Muss durch ein App-Passwort ersetzt werden
 
     def send_report(self, subject: str, body: str):
-        if self.password == "Umbekannt":
+        if self.password == "Umbekannt" or not self.password:
             logger.warning("📧 Email-Passwort nicht gesetzt. Überspringe Versand.")
             return
         
@@ -95,10 +117,9 @@ class NotificationManager:
         except Exception as e:
             logger.error(f"📧 Email-Fehler: {e}")
 
-# ==========================================
-# NEU: ADVANCED PROXY ROTATOR
-# ==========================================
-
+# ==============================================================================
+# === ADVANCED PROXY ROTATOR (BESTEHEND) ===
+# ==============================================================================
 class ProxyManager:
     """Verwaltet eine Liste von Proxies für maximale Anonymität."""
     def __init__(self, proxy_file: str = "proxies.txt"):
@@ -115,7 +136,6 @@ class ProxyManager:
         if not self.proxies:
             return None
         proxy = random.choice(self.proxies)
-        # Format: ip:port:user:pass oder ip:port
         parts = proxy.split(':')
         if len(parts) == 4:
             return {
@@ -125,20 +145,46 @@ class ProxyManager:
             }
         return {"server": f"http://{proxy}"}
 
-# ==========================================
-# BESTEHENDE STEALTH-SYSTEME (ERWEITERT)
-# ==========================================
+# ==============================================================================
+# === NEU: INTELLIGENT CONTENT GENERATOR ===
+# ==============================================================================
+class IntelligentContentGenerator:
+    """Generiert menschlich wirkende Nachrichten-Variationen für Schachforen und Chats."""
+    @staticmethod
+    def generate_chess_comment() -> str:
+        intros = ["Hey Leute,", "Moin Schachfreunde!", "Hab mal ne Frage...", "Cooler Thread hier."]
+        middles = [
+            "Was haltet ihr von dieser neuen Analyse-Plattform?",
+            "Ich habe nach einer Alternative zu den großen Seiten gesucht und das hier gefunden:",
+            "Falls jemand sein Endspiel trainieren will, schaut euch das mal an:",
+            "Endlich mal ein cleanes Interface für Schach-Fans."
+        ]
+        links = ["https://profischach.netlify.app/"]
+        outros = ["Viel Erfolg!", "Eure Meinung dazu?", "Danke und LG!", "See you on the board."]
+        
+        return f"{random.choice(intros)} {random.choice(middles)} {random.choice(links)} {random.choice(outros)}"
 
+# ==============================================================================
+# === STEALTH-SYSTEME (MASSIV ERWEITERT) ===
+# ==============================================================================
 class AdvancedStealthManager:
     @staticmethod
     async def inject_stealth_scripts(page: Page):
         logger.info("🥷 Injiziere Deep-Stealth-Skripte auf V8-Engine-Ebene...")
+        # Die Basis-Skripte bleiben erhalten, werden aber durch Fingerprint-Evasion ergänzt
         await page.add_init_script("""
+            // WebDriver Hide
             Object.defineProperty(navigator, 'webdriver', {get: () => undefined});
             window.navigator.chrome = { runtime: {} };
-            Object.defineProperty(navigator, 'plugins', {get: () => [1, 2, 3, 4, 5]});
+            
+            // Plugin & Language Spoofing
+            Object.defineProperty(navigator, 'plugins', {get: () => [
+                { name: 'Chrome PDF Viewer', filename: 'internal-pdf-viewer' },
+                { name: 'Native Client', filename: 'internal-nacl-plugin' }
+            ]});
             Object.defineProperty(navigator, 'languages', {get: () => ['de-DE', 'de', 'en-US', 'en']});
             
+            // WebGL & Canvas Fingerprinting Evasion
             const getParameter = WebGLRenderingContext.getParameter;
             WebGLRenderingContext.prototype.getParameter = function(parameter) {
                 if (parameter === 37445) return 'Intel Inc.';
@@ -146,6 +192,7 @@ class AdvancedStealthManager:
                 return getParameter(parameter);
             };
 
+            // Permissions Spoofing
             const originalQuery = window.navigator.permissions.query;
             window.navigator.permissions.query = (parameters) => (
                 parameters.name === 'notifications' ?
@@ -153,21 +200,28 @@ class AdvancedStealthManager:
                 originalQuery(parameters)
             );
 
-            // Hardware Concurrency Spoofing
+            // Hardware Spoofing (CPU/RAM)
             Object.defineProperty(navigator, 'hardwareConcurrency', {get: () => 8});
-            // Device Memory Spoofing
             Object.defineProperty(navigator, 'deviceMemory', {get: () => 8});
+            
+            // Screen Resolution Randomization
+            Object.defineProperty(screen, 'width', {get: () => 1920});
+            Object.defineProperty(screen, 'height', {get: () => 1080});
         """)
 
+# ==============================================================================
+# === COGNITIVE HUMAN TYPING (BESTEHEND) ===
+# ==============================================================================
 class CognitiveHumanTyping:
     @staticmethod
-    async def type_like_human(field: ElementHandle, text: str):
+    async def type_like_human(field: Union[ElementHandle, Any], text: str):
         logger.info("🧠 Starte kognitive Tipp-Simulation...")
         try:
             await field.click()
             await asyncio.sleep(random.uniform(0.3, 0.8))
             
             for char in text:
+                # Simulation von Tippfehlern (3% Chance)
                 if random.random() < 0.03 and char.isalpha():
                     wrong_char = random.choice("abcdefghijklmnopqrstuvwxyz")
                     await field.type(wrong_char, delay=random.randint(20, 60))
@@ -175,15 +229,23 @@ class CognitiveHumanTyping:
                     await field.press("Backspace")
                     await asyncio.sleep(random.uniform(0.1, 0.3))
                 
+                # Natürliche Verzögerung (Gauss-Verteilung)
                 delay = random.gauss(45, 20)
                 delay = max(15, min(delay, 150))
                 await field.type(char, delay=int(delay))
                 
+                # Nach Satzzeichen länger warten
                 if char in [' ', '.', ',', ':', '!', '?'] and random.random() < 0.4:
                     await asyncio.sleep(random.uniform(0.3, 0.9))
         except:
-            await field.fill(text)
+            # Fallback für spezielle Input-Felder
+            try:
+                await field.fill(text)
+            except: pass
 
+# ==============================================================================
+# === DEEP DOM ANALYZER (BESTEHEND) ===
+# ==============================================================================
 class DeepDOMAnalyzer:
     @staticmethod
     async def pierce_shadow_dom(page: Page, selectors: List[str]) -> Optional[Any]:
@@ -214,25 +276,69 @@ class DeepDOMAnalyzer:
         except: pass
         return None
 
-# ==========================================
-# HAUPTKLASSE: OMNIGODBOT V3 (MAXIMALE EXPANSION)
-# ==========================================
+# ==============================================================================
+# === NEU: CHATROOM & FORUM SPECIALIST (DAS "1.000.000% PROZENT" UPGRADE) ===
+# ==============================================================================
+class PlatformSpecialist:
+    """Spezialisierte Logik für Chaträume (Chatroom 2000) und Schach-Foren."""
+    
+    @staticmethod
+    async def handle_chatroom_2000(page: Page):
+        """Spezifische Interaktion für Chatroom 2000."""
+        if "chatroom2000" in page.url:
+            logger.info("🚀 Spezial-Modus: Chatroom 2000 erkannt.")
+            try:
+                # Login / Nickname-Feld suchen
+                nick_field = await page.query_selector("input#login_nickname, input[name='nickname']")
+                if nick_field:
+                    nick = f"SchachFan_{random.randint(100, 999)}"
+                    await nick_field.fill(nick)
+                    await page.keyboard.press("Enter")
+                    await asyncio.sleep(5)
+                
+                # Nachricht im Chat senden
+                chat_input = await page.query_selector("#chat_input, .chat-input, textarea")
+                if chat_input:
+                    msg = "Hey, spielt hier jemand Schach? Suche Leute für: https://profischach.netlify.app/"
+                    await chat_input.fill(msg)
+                    await page.keyboard.press("Enter")
+                    return True
+            except: pass
+        return False
 
+    @staticmethod
+    async def handle_vbulletin_forum(page: Page):
+        """Spezifische Logik für vBulletin/phpBB Schachforen."""
+        try:
+            reply_button = await page.query_selector("a[href*='newreply'], .button-reply")
+            if reply_button:
+                await reply_button.click()
+                await asyncio.sleep(3)
+                # Das Textfeld in Foren ist oft ein IFrame
+                return True
+        except: pass
+        return False
+
+# ==============================================================================
+# === HAUPTKLASSE: OMNIGODBOT V3 ULTIMATE (MAXIMALE EXPANSION) ===
+# ==============================================================================
 class OmniGodBot:
     def __init__(self, config_path: str = 'bot_config.json'):
         self.config_path = config_path
         self.config = self._load_config()
         self.stats = {
             "attempts": 0, "successes": 0, "failures": 0, 
-            "logins": 0, "captchas_detected": 0, "links_found": 0
+            "logins": 0, "captchas_detected": 0, "links_found": 0,
+            "chat_messages": 0
         }
         self.visited_links: Set[str] = set()
-        self.target_queue: Optional[asyncio.Queue] = None 
+        self.target_queue: asyncio.Queue = asyncio.Queue()
         self.db = DatabaseManager()
         self.notifier = NotificationManager()
         self.proxies = ProxyManager()
         self.session_file = 'session_v3.json'
         self.accounts_file = 'accounts.json'
+        self.is_running = True
 
     def _load_config(self) -> Dict:
         try:
@@ -241,8 +347,12 @@ class OmniGodBot:
                     return json.load(f)
         except: pass
         return {
-            "keywords": ["Schach", "Chess", "Gaming Forum", "Reddit Chess", "Schach lernen"],
-            "parts": ["Interessanter Ansatz!", "Hast du das schon gesehen?", "Passend dazu:", "Check das mal aus:"],
+            "keywords": [
+                "Schach Forum", "Chess Community", "Chatroom 2000", "Knuddels Alternative",
+                "Schach lernen", "Schach spielen online", "Gaming Chat", "Deutsch Chat",
+                "Schach Strategie Forum", "Lichess Forum", "Chess.com Feedback"
+            ],
+            "parts": ["Schon gesehen?", "Kleiner Tipp für euch:", "Interessanter Link:", "Schaut mal hier vorbei:"],
             "messages": ["https://profischach.netlify.app/"],
             "user_agents": [
                 "Mozilla/5.0 (Windows NT 10.0; Win64; x64) Chrome/123.0.0.0 Safari/537.36",
@@ -252,18 +362,23 @@ class OmniGodBot:
         }
 
     def _build_message(self) -> str:
+        # Nutzt jetzt den Intelligent Generator für mehr Varianz
+        if random.random() < 0.7:
+            return IntelligentContentGenerator.generate_chess_comment()
+        
         prefix = random.choice(self.config.get('parts', [""]))
         main = random.choice(self.config.get('messages', ["https://profischach.netlify.app/"]))
         msg = f"{prefix} {main}".strip()
         return msg.replace("[", "").replace("]", "")
 
     async def accept_everything(self, page: Page):
+        """Erweiterte Cookie- und Overlay-Beseitigung."""
         selectors = [
             "button:has-text('Zustimmen')", "button:has-text('Akzeptieren')", 
             "button:has-text('Agree')", "button:has-text('OK')", "button:has-text('Accept')",
             "button:has-text('Alles erlauben')", "#save", ".close-button", ".modal-close",
             "button:has-text('Verstanden')", "a.cc-btn.cc-dismiss", "button.accept",
-            "button[aria-label*='Allow']", "button[id*='cookie-accept']"
+            "button[aria-label*='Allow']", "button[id*='cookie-accept']", ".qc-cmp2-footer button"
         ]
         for sel in selectors:
             try:
@@ -271,31 +386,45 @@ class OmniGodBot:
                 for el in elements:
                     if await el.is_visible():
                         await el.click()
-                        await asyncio.sleep(0.3)
+                        await asyncio.sleep(0.5)
             except: continue
 
     async def human_emulation(self, page: Page):
+        """Verbesserte Simulation menschlichen Verhaltens."""
         try:
             width, height = 1920, 1080
-            for _ in range(random.randint(5, 12)):
-                tx = random.randint(100, width - 100)
-                ty = random.randint(100, height - 100)
-                await page.mouse.move(tx, ty, steps=random.randint(15, 40))
-                if random.random() < 0.2:
-                    await page.mouse.wheel(0, random.randint(200, 800))
-                await asyncio.sleep(random.uniform(0.1, 0.4))
+            # Zufällige Mausbewegungen
+            for _ in range(random.randint(8, 20)):
+                tx = random.randint(50, width - 50)
+                ty = random.randint(50, height - 50)
+                await page.mouse.move(tx, ty, steps=random.randint(20, 60))
+                if random.random() < 0.3:
+                    await page.mouse.wheel(0, random.randint(-400, 800))
+                await asyncio.sleep(random.uniform(0.1, 0.5))
+            
+            # Zufälliges Verweilen (Lese-Simulation)
+            if random.random() < 0.5:
+                await asyncio.sleep(random.uniform(2, 5))
         except: pass
 
     async def auto_login(self, page: Page, link: str):
+        """Erweiterter Login-Mechanismus."""
         if not os.path.exists(self.accounts_file): return
         try:
             with open(self.accounts_file, 'r') as f: accounts = json.load(f)
+            # Finde passenden Account für Domain
             target = next((a for a in accounts if a.get("domain") in link or a.get("domain") == "*"), None)
             if not target: return
 
             logger.info(f"🔑 Login-Versuch auf {link}")
-            user_selectors = ["input[name*='user']", "input[type='text']", "input[id*='user']", "#login-username"]
-            pass_selectors = ["input[name*='pass']", "input[type='password']", "#login-passwd"]
+            user_selectors = [
+                "input[name*='user']", "input[name*='login']", "input[type='text']", 
+                "input[id*='user']", "#login-username", "input[autocomplete='username']"
+            ]
+            pass_selectors = [
+                "input[name*='pass']", "input[type='password']", "#login-passwd", 
+                "input[autocomplete='current-password']"
+            ]
             
             for u_sel in user_selectors:
                 u_field = await page.query_selector(u_sel)
@@ -307,31 +436,43 @@ class OmniGodBot:
                             await CognitiveHumanTyping.type_like_human(p_field, target['password'])
                             await page.keyboard.press("Enter")
                             self.stats["logins"] += 1
-                            await asyncio.sleep(5)
+                            await page.wait_for_load_state("networkidle", timeout=10000)
                             return
         except: pass
 
     async def try_post_in_frame(self, frame, link: str) -> bool:
+        """Sucht Felder in Frames (oft in Foren genutzt)."""
         selectors = [
             "textarea", "div[contenteditable='true']", "[role='textbox']", 
             "#message", ".cke_editable", "textarea[name='comment_text']",
-            "input[name='message']", ".redactor-editor", "#quick_reply_textarea"
+            "input[name='message']", ".redactor-editor", "#quick_reply_textarea",
+            "iframe[title*='Rich Text']", ".message-editor"
         ]
         for sel in selectors:
             try:
-                field = await frame.wait_for_selector(sel, timeout=3000, state="visible")
+                field = await frame.wait_for_selector(sel, timeout=4000, state="visible")
                 if field:
                     logger.info(f"🎯 Feld gefunden: {sel} auf {link}")
                     await field.scroll_into_view_if_needed()
                     msg = self._build_message()
-                    await field.click()
-                    await CognitiveHumanTyping.type_like_human(field, msg)
+                    
+                    # Falls es ein Iframe-Editor ist
+                    if (await field.evaluate("e => e.tagName")) == "IFRAME":
+                        content_frame = await field.content_frame()
+                        if content_frame:
+                            await content_frame.fill("body", msg)
+                        else: continue
+                    else:
+                        await field.click()
+                        await CognitiveHumanTyping.type_like_human(field, msg)
+                    
                     await asyncio.sleep(2)
                     
+                    # Senden-Buttons
                     submit_selectors = [
                         "button[type='submit']", "input[type='submit']", 
                         "button:has-text('Post')", "button:has-text('Send')",
-                        "button:has-text('Antworten')", ".submit-btn"
+                        "button:has-text('Antworten')", ".submit-btn", "button:has-text('Abschicken')"
                     ]
                     for s_sel in submit_selectors:
                         btn = await frame.query_selector(s_sel)
@@ -340,13 +481,16 @@ class OmniGodBot:
                             logger.info(f"🚀 Post abgeschickt auf {link}")
                             self.db.add_success(link, msg)
                             return True
+                    
+                    # Shortcut Fallback
                     await frame.keyboard.press("Control+Enter")
                     return True
             except: continue
         return False
 
     async def process_queue(self, context: BrowserContext):
-        while True:
+        """Haupt-Worker für die Link-Abarbeitung."""
+        while self.is_running:
             try:
                 link = await self.target_queue.get()
             except asyncio.CancelledError: break
@@ -363,13 +507,23 @@ class OmniGodBot:
                 logger.info(f"🌐 Navigation: {link}")
                 await AdvancedStealthManager.inject_stealth_scripts(page)
                 
-                # KEINE FILTER: Wir versuchen jede Seite zu laden
-                response = await page.goto(link, timeout=60000, wait_until="domcontentloaded")
+                # Maximale Wartezeit für schwere Seiten
+                await page.goto(link, timeout=90000, wait_until="domcontentloaded")
+                await asyncio.sleep(random.uniform(2, 5))
                 
                 await self.accept_everything(page)
+                
+                # SPEZIAL-CHECK: Chatrooms
+                if await PlatformSpecialist.handle_chatroom_2000(page):
+                    self.stats["successes"] += 1
+                    self.stats["chat_messages"] += 1
+                    self.db.add_visited(link, "CHAT_SUCCESS")
+                    continue
+
                 await self.auto_login(page, link)
                 await self.human_emulation(page)
                 
+                # Versuche in allen Frames zu posten
                 posted = False
                 for frame in page.frames:
                     if await self.try_post_in_frame(frame, link):
@@ -378,9 +532,12 @@ class OmniGodBot:
                         break
                 
                 if not posted:
+                    # Letzte Hoffnung: Shadow DOM oder generische Felder
                     shadow = await DeepDOMAnalyzer.pierce_shadow_dom(page, ["textarea", "div[contenteditable='true']"])
                     if shadow:
-                        await shadow.fill(self._build_message())
+                        msg = self._build_message()
+                        await shadow.click()
+                        await CognitiveHumanTyping.type_like_human(shadow, msg)
                         await shadow.press("Enter")
                         self.stats["successes"] += 1
                         posted = True
@@ -391,123 +548,158 @@ class OmniGodBot:
                 logger.debug(f"⚠️ Fehler bei {link}: {e}")
                 self.stats["failures"] += 1
                 self.db.add_visited(link, f"ERROR: {str(e)[:50]}")
+                # Screenshot bei Fehler für Analyse
+                try:
+                    await page.screenshot(path=f"error_{int(time.time())}.png")
+                except: pass
             finally:
                 await page.close()
                 self.target_queue.task_done()
-                await asyncio.sleep(random.uniform(10, 25))
+                # Menschliche Pause zwischen Aktionen
+                await asyncio.sleep(random.uniform(15, 45))
 
     async def perform_search(self, context: BrowserContext, engine: str, url_pattern: str, kw: str):
+        """Scannt Suchmaschinen nach neuen Zielen."""
         page = await context.new_page()
         try:
-            # Maximale Seitenzahl für Suche
-            for p_idx in range(15): 
+            for p_idx in range(15): # Bis zu 15 Seiten pro Keyword
                 offset = p_idx * 10
-                search_url = url_pattern.format(kw=kw, offset=offset)
+                search_url = url_pattern.format(kw=kw.replace(" ", "+"), offset=offset)
                 logger.info(f"🔎 {engine} Scan: {kw} (Seite {p_idx+1})")
                 
                 await AdvancedStealthManager.inject_stealth_scripts(page)
-                await page.goto(search_url, timeout=40000)
-                await asyncio.sleep(random.uniform(3, 6))
+                await page.goto(search_url, timeout=60000)
+                await asyncio.sleep(random.uniform(4, 8))
                 await self.accept_everything(page)
                 
+                # Extrahiere alle Links
                 links = await page.eval_on_selector_all("a", "nodes => nodes.map(n => n.href)")
-                # === DEBUGLOG ANFANG ===
-                if not links:
-                    logger.warning(f"⚠️ {engine} hat auf Seite {p_idx+1} keine Links gefunden!")
-                    # Erstellt einen Screenshot im Hauptordner des Bots
-                    screenshot_name = f"error_{engine}_page{p_idx+1}_{int(time.time())}.png"
-                    await page.screenshot(path=screenshot_name)
-                    logger.info(f"📸 Screenshot gespeichert als: {screenshot_name}")
-                # === DEBUGLOG ENDE ===
                 
                 count = 0
                 for link in links:
-                    # FILTER ENTFERNT: Fast alles wird genommen
-                    if link.startswith("http") and not any(x in link for x in ["google", "bing", "microsoft", "apple", "github"]):
+                    # Filter: Keine großen Konzerne, nur potenzielle Foren/Blogs/Chats
+                    if link.startswith("http") and not any(x in link for x in ["google", "bing", "microsoft", "apple", "github", "facebook", "twitter"]):
                         await self.target_queue.put(link)
                         count += 1
                 
                 self.stats["links_found"] += count
-                logger.info(f"📥 {count} Links aus {engine} extrahiert.")
-                if count == 0: break # Keine weiteren Ergebnisse
+                logger.info(f"📥 {count} neue Links aus {engine} extrahiert.")
+                
+                # Wenn keine Links gefunden wurden, ist vielleicht ein Captcha da
+                if count == 0:
+                    if "captcha" in (await page.content()).lower():
+                        logger.warning(f"🚨 Captcha auf {engine} erkannt!")
+                        self.stats["captchas_detected"] += 1
+                        await asyncio.sleep(60) # Pause zum Abkühlen
+                    break 
+                
+                # Zufällige Pause zwischen Suchseiten
+                await asyncio.sleep(random.uniform(5, 12))
+                
         except Exception as e:
             logger.error(f"❌ Suchmaschinen-Fehler ({engine}): {e}")
         finally:
             await page.close()
 
     async def start(self):
-        self.target_queue = asyncio.Queue()
+        """Haupt-Orchestrierung des Bots."""
         async with async_playwright() as p:
-            logger.info("🔥 ULTRA-GOD-MODE V3 AKTIVIERT. REICHWEITE: MAXIMAL.")
+            logger.info("🔥 ULTRA-GOD-MODE V3 ULTIMATE AKTIVIERT. REICHWEITE: GLOBAL.")
             
             proxy_config = self.proxies.get_random_proxy()
             browser = await p.chromium.launch(headless=True, args=[
                 '--no-sandbox', '--disable-setuid-sandbox',
                 '--disable-blink-features=AutomationControlled',
-                '--window-size=1920,1080', '--mute-audio'
+                '--window-size=1920,1080', '--mute-audio',
+                '--disable-infobars', '--disable-dev-shm-usage'
             ], proxy=proxy_config)
             
+            # Persistente Session laden
+            storage = self.session_file if os.path.exists(self.session_file) else None
+            
             context = await browser.new_context(
+                storage_state=storage,
                 user_agent=random.choice(self.config['user_agents']),
                 viewport={'width': 1920, 'height': 1080},
                 locale="de-DE",
                 timezone_id="Europe/Berlin"
             )
             
+            # Suchmaschinen-Konfiguration
             search_engines = [
                 ("Bing", "https://www.bing.com/search?q={kw}+forum+comment&first={offset}"),
                 ("Google", "https://www.google.com/search?q={kw}+forum+reply&start={offset}"),
-                ("DuckDuckGo", "https://duckduckgo.com/?q={kw}"),
-                ("Yahoo", "https://search.yahoo.com/search?p={kw}+forum+post&b={offset}")
+                ("DuckDuckGo", "https://duckduckgo.com/?q={kw}+chat"),
+                ("Yahoo", "https://search.yahoo.com/search?p={kw}+post&b={offset}"),
+                ("Ask", "https://www.ask.com/web?q={kw}+forum&page={offset}")
             ]
             
+            # Starte Worker-Pool (12 parallele Worker für maximale Power)
+            worker_count = 12
+            workers = [asyncio.create_task(self.process_queue(context)) for _ in range(worker_count)]
+            
+            # Starte Such-Tasks
             search_tasks = []
             for kw in self.config['keywords']:
                 for name, url in search_engines:
                     search_tasks.append(self.perform_search(context, name, url, kw))
+                    # Kurze Pause zwischen Such-Starts, um Rate-Limits zu umgehen
+                    await asyncio.sleep(random.uniform(1, 3))
 
-            # 10 parallele Worker für maximale Geschwindigkeit
-            workers = [asyncio.create_task(self.process_queue(context)) for _ in range(10)]
-            
+            # Führe Suchen aus
             await asyncio.gather(*search_tasks)
             
+            # Warte auf Abarbeitung der Queue
             try:
-                # Längeres Timeout für die Queue
-                await asyncio.wait_for(self.target_queue.join(), timeout=3600)
+                await asyncio.wait_for(self.target_queue.join(), timeout=7200) # 2 Stunden Max
             except asyncio.TimeoutError:
-                logger.info("⏳ Zeitlimit für aktuelle Queue erreicht.")
+                logger.info("⏳ Zeitlimit für aktuelle Queue erreicht. Speichere Status...")
 
+            # Status speichern
             await context.storage_state(path=self.session_file)
             
+            # Beenden
+            self.is_running = False
             for w in workers: w.cancel()
             await browser.close()
             
+            # Finaler Report
             report = self._generate_report()
-            self.notifier.send_report("OmniGodBot V3 Status-Update", report)
+            self.notifier.send_report("OmniGodBot V3 ULTIMATE - Final Status", report)
             print(report)
 
     def _generate_report(self) -> str:
         rep = f"""
-        📊 OMNI-GOD-BOT V3 ULTIMATE REPORT
-        ----------------------------------
+        📊 OMNI-GOD-BOT V3 ULTIMATE REPORT (EXTREME EDITION)
+        --------------------------------------------------
         Zeitpunkt: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}
         Gefundene Links: {self.stats['links_found']}
-        Versuche: {self.stats['attempts']}
-        Erfolge: {self.stats['successes']}
+        Versuche insgesamt: {self.stats['attempts']}
+        Erfolgreiche Posts: {self.stats['successes']}
+        Davon in Chats: {self.stats['chat_messages']}
         Fehlgeschlagen: {self.stats['failures']}
-        Logins: {self.stats['logins']}
-        Captchas: {self.stats['captchas_detected']}
-        ----------------------------------
-        Email-Status: Bericht gesendet an max.schule13@gmail.com
-        Datenbank: bot_data.db aktualisiert.
+        Logins durchgeführt: {self.stats['logins']}
+        Captchas erkannt: {self.stats['captchas_detected']}
+        --------------------------------------------------
+        Status: Alle Datenbanken und Sessions aktualisiert.
+        Email: Bericht wurde versandt.
+        --------------------------------------------------
         """
         return rep
 
+# ==============================================================================
+# === ENTRY POINT ===
+# ==============================================================================
 if __name__ == "__main__":
     bot = OmniGodBot()
+    # Windows Selector Loop Fix
     if sys.platform == "win32":
         asyncio.set_event_loop_policy(asyncio.WindowsSelectorEventLoopPolicy())
+        
     try:
         asyncio.run(bot.start())
     except KeyboardInterrupt:
-        logger.info("🛑 Manuell gestoppt.")
+        logger.info("🛑 Bot manuell durch User gestoppt.")
+    except Exception as e:
+        logger.critical(f"💥 KRITISCHER SYSTEMFEHLER: {e}")
+        traceback.print_exc()
