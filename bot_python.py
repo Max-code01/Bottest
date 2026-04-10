@@ -627,7 +627,7 @@ class OmniGodBot:
                 await self.accept_everything(page)
                 
                 # Extrahiere alle Links
-                links = await page.eval_on_selector_all("a", "nodes => nodes.map(n => n.href)")
+                links = await page.evaluate("() => Array.from(document.querySelectorAll('a')).map(a => a.href)")
                 
                 count = 0
                 for link in links:
