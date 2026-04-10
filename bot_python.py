@@ -72,10 +72,10 @@ class NotificationManager:
     def __init__(self, email: str = "max.schule13@gmail.com"):
         self.receiver_email = email
         self.sender_email = email
-        self.password = "DEIN_APP_PASSWORT" # Muss durch ein App-Passwort ersetzt werden
+        self.password = "Max1234567890123" # Muss durch ein App-Passwort ersetzt werden
 
     def send_report(self, subject: str, body: str):
-        if self.password == "DEIN_APP_PASSWORT":
+        if self.password == "Umbekannt":
             logger.warning("📧 Email-Passwort nicht gesetzt. Überspringe Versand.")
             return
         
