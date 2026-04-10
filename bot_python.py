@@ -392,9 +392,9 @@ class OmniGodBot:
         }
 
     def _build_message(self) -> str:
-        # Nutzt jetzt den Intelligent Generator für mehr Varianz
-        if random.random() < 0.7:
-            return IntelligentContentGenerator.generate_chess_comment()
+        # Da die KI jetzt direkt in try_post_in_frame aufgerufen wird,
+        # dient dies nur noch als absoluter Notfall-Fallback.
+        return "Schaut mal hier vorbei für Schach-Training: https://profischach.netlify.app/"
         
         prefix = random.choice(self.config.get('parts', [""]))
         main = random.choice(self.config.get('messages', ["https://profischach.netlify.app/"]))
