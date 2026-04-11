@@ -1,0 +1,6 @@
+{
+    "bot_name": "DeinBotName",
+    "bot_password": "DeinPasswort123",
+    "command_prefix": "!",
+    "gender": "n" 
+}
