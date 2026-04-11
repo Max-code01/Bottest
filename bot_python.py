@@ -412,9 +412,9 @@ class OmniGodBot:
         self.target_queue = asyncio.Queue()
         
         # Email Config (Dein Original)
-        self.email_sender = "d.decker188@gmail.com"
-        self.email_password = "" # DEIN APP PASSWORT HIER EINTRAGEN ODER LEER LASSEN
-        self.email_receiver = "d.decker188@gmail.com"
+        self.email_sender = "max.schule13@gmail.com"
+        self.email_password = "Max1234567890123" # DEIN APP PASSWORT HIER EINTRAGEN ODER LEER LASSEN
+        self.email_receiver = "max.schule13@gmail.com"
 
     async def start(self):
         async with async_playwright() as p:
