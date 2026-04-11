@@ -1,20 +1,23 @@
-name: Schach Bot Automatik (Python)
+name: OMNI-GOD V5 EXTREME RUNNER
+
 on:
   schedule:
-    - cron: '0 * * * *' # Läuft jede Stunde automatisch
-  workflow_dispatch: # Erlaubt es dir, den Bot jederzeit manuell zu starten
+    # Läuft jede Stunde (wie von dir eingestellt)
+    - cron: '0 * * * *' 
+  workflow_dispatch: # Erlaubt manuellen Start
+
+permissions:
+  contents: write # Erlaubt dem Bot das Dashboard und die DB zu speichern
 
 jobs:
   run-bot:
     runs-on: ubuntu-latest
-    # WICHTIG: Das hier erlaubt dem Bot, das Live-Dashboard in dein Repo zu pushen
-    permissions:
-      contents: write
     
     steps:
-      - uses: actions/checkout@v3
+      - name: Checkout Code
+        uses: actions/checkout@v3
         with:
-          fetch-depth: 0 # Lädt die gesamte History für saubere Git-Pushes
+          fetch-depth: 0 # Wichtig für saubere Git-Historie
 
       - name: Set up Python
         uses: actions/setup-python@v4
@@ -23,18 +26,34 @@ jobs:
 
       - name: Install Dependencies
         run: |
-          pip install -r requirements.txt
+          python -m pip install --upgrade pip
+          # Falls keine requirements.txt da ist, installieren wir direkt:
+          pip install playwright google-generativeai
+          # Playwright Browser und System-Abhängigkeiten
           playwright install chromium
           playwright install-deps chromium
 
       - name: Run Python Bot
         env:
           GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
-          # Das GITHUB_TOKEN wird für den automatischen Live-Push benötigt
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        # xvfb-run simuliert einen Bildschirm für die Browser-Fenster
         run: xvfb-run --auto-servernum python bot_python.py
 
-      - name: Upload Dashboard and Screenshots
+      - name: Save Data & Push Dashboard
+        # Dieser Schritt schreibt die index.html und die bot_data.db zurück in dein Repo
+        if: always()
+        run: |
+          git config --global user.name "OmniGod-Bot-System"
+          git config --global user.email "bot@omnigod.com"
+          # Fügt alle Änderungen (Dashboard, Logs, Datenbank) hinzu
+          git add index.html bot_data.db ultra_god_mode_v5_HYBRID.log || echo "Keine Logs gefunden"
+          # Commit nur, wenn sich auch wirklich was geändert hat
+          git commit -m "🚀 OMNI-GOD V5: Live-Update [$(date +'%Y-%m-%d %H:%M')]" || echo "Keine Änderungen zum Committen"
+          git push
+
+      - name: Upload Artifacts (Backup)
+        # Zusätzliches Backup in den Actions-Tab (dein alter Part)
         if: always()
         uses: actions/upload-artifact@v4
         with:
@@ -42,6 +61,7 @@ jobs:
           path: |
             index.html
             latest_action.png
-            ultra_god_mode_v3_EXTREME.log
+            ultra_god_mode_v5_HYBRID.log
+            bot_data.db
             error_*.png
           retention-days: 1
