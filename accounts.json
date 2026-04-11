@@ -3,5 +3,20 @@
     "domain": "*",
     "username": "DEIN_BENUTZERNAME",
     "password": "DEIN_PASSWORT"
+  },
+  {
+    "domain": "chatroom2000.de",
+    "username": "Marrlenee16",
+    "password": "1234567890"
+  },
+  {
+    "domain": "chess.com",
+    "username": "SchachProfi_Max",
+    "password": "DeinSicheresPasswort"
+  },
+  {
+    "domain": "knuddels.de",
+    "username": "SchachMaster99",
+    "password": "DeinPasswort"
   }
 ]
