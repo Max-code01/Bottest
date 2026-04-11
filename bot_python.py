@@ -168,28 +168,39 @@ class ChatSniper:
 # ==============================================================================
 # === 5. INTELLIGENT LINK FILTER (SCHROTT-ABWEHR) ===
 # ==============================================================================
+# ==============================================================================
+# === 5. INTELLIGENT LINK FILTER (SCHROTT-ABWEHR) - VERBESSERT ===
+# ==============================================================================
 class LinkIntelligence:
-    """Filtert Schrott-Links aus Suchergebnissen heraus."""
+    """Filtert Schrott-Links aus Suchergebnissen heraus, bleibt aber offen für Ziele."""
     RELEVANT_KEYWORDS = [
         "forum", "chat", "thread", "topic", "community", "board", "viewtopic", 
-        "index.php", "showtopic", "comments", "diskussion", "reply", "post", "nachricht", "board"
+        "index.php", "showtopic", "comments", "diskussion", "reply", "post", 
+        "nachricht", "phpbb", "vbulletin", "Chatroom", "guestbook", "Chat", "chatroom"
     ]
     
+    # Hier nur die absoluten Giganten lassen, die sicher keine Foren zum Posten sind
     JUNK_DOMAINS = [
-        "google", "bing", "microsoft", "apple", "github", "facebook", "twitter", 
-        "linkedin", "instagram", "youtube", "amazon", "ebay", "wikipedia", "netflix",
-        "pinterest", "tiktok", "spotify"
+        "google.com/search", "bing.com/search", "microsoft.com", "apple.com", 
+        "netflix.com", "spotify.com", "amazon.", "ebay.", "twitter.com/share"
     ]
 
     @classmethod
     def is_valuable(cls, url: str) -> bool:
         url_lower = url.lower()
+        
+        # 1. Schritt: Ist es eine reine Suchmaschinenseite? -> Dann Schrott
         if any(junk in url_lower for junk in cls.JUNK_DOMAINS):
             return False
+            
+        # 2. Schritt: Enthält die URL ein Zeichen für Interaktion? -> Dann wertvoll
         if any(kw in url_lower for kw in cls.RELEVANT_KEYWORDS):
             return True
-        return False
-
+            
+        # 3. Schritt: Fallback - Wenn die URL kein Foren-Keyword hat, 
+        # lassen wir sie trotzdem zu 20% durch, um neue Plattformen zu finden
+        import random
+        return random.random() < 0.20
 # ==============================================================================
 # === 6. KOGNITIVES MENSCHLICHES TIPPEN (DEIN ALTER CODE ERHALTEN) ===
 # ==============================================================================
@@ -450,8 +461,8 @@ class OmniGodBot:
             # --- SCHRITT 3: LIVE SUCHMASCHINEN SCANNEN (PARALLEL) ---
             keywords = [
                 "Schach Forum", "Chatroom 2000 Alternative", "Schach spielen online Chat", 
-                "Knuddels Alternative", "Gaming Chat Deutsch", "Brettspiele Forum",
-                "Denksport Forum", "Online Schach spielen kostenlos"
+                "Knuddels Alternative", "Gaming Chat Deutsch", "Chatroom",
+                "Chat online", "Online Schach spielen kostenlos"
             ]
             search_tasks = [self.perform_search(context, kw) for kw in keywords]
             
