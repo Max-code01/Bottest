@@ -46,7 +46,7 @@ jobs:
         run: |
           # Hier kannst du auch deine eigene E-Mail eintragen, falls du willst
           git config --global user.name "OmniGod-Bot-System"
-          git config --global user.email "bot@omnigod.com"
+          git config --global user.email "max.schule13@gmail.com
           
           # Sicherstellen, dass die Dateien existieren, bevor sie hinzugefügt werden
           git add index.html bot_data.db ultra_god_mode_v5_HYBRID.log latest_action.png || echo "Einige Dateien fehlen noch"
