@@ -37,7 +37,9 @@ jobs:
         env:
           GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          EMAIL_PASSWORD: ${{ secrets.EMAIL_PASSWORD }}
         # xvfb-run simuliert einen Monitor, damit der Browser "denken" kann, er sei sichtbar
+        
         run: xvfb-run --auto-servernum python bot_python.py
 
       - name: Save Data & Push Dashboard
