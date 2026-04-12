@@ -2,12 +2,12 @@ name: OMNI-GOD V5 EXTREME RUNNER
 
 on:
   schedule:
-    # Läuft alle 30 Minuten (angepasst für höhere Frequenz)
+    # Läuft alle 30 Minuten
     - cron: '*/30 * * * *' 
   workflow_dispatch: # Erlaubt manuellen Start jederzeit
 
 permissions:
-  contents: write # Zwingend erforderlich für das Live-Dashboard
+  contents: write # Zwingend erforderlich für das Live-Dashboard und die DB
 
 jobs:
   run-bot:
@@ -15,7 +15,7 @@ jobs:
     
     steps:
       - name: Checkout Code
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
         with:
           fetch-depth: 0 
 
@@ -38,25 +38,29 @@ jobs:
           EMAIL_PASSWORD: ${{ secrets.EMAIL_PASSWORD }} # Muss in GitHub Secrets angelegt sein
         run: xvfb-run --auto-servernum python bot_python.py
 
-      - name: Save Data & Push Dashboard
+      - name: Save Data, Screenshots & Push Dashboard
         if: always()
         run: |
           git config --global user.name "OmniGod-Bot-System"
           git config --global user.email "max.schule13@gmail.com"
           
-          git add index.html bot_data.db ultra_god_mode_v5_HYBRID.log latest_action.png || echo "Dateien fehlen"
+          # Sicherheits-Check: Holt den neuesten Stand, falls du im Browser etwas geändert hast
+          git pull origin main --rebase || echo "Pull übersprungen"
           
-          # Nur committen, wenn es echte Änderungen gibt, um Fehler zu vermeiden
-          git diff --quiet && git diff --staged --quiet || (git commit -m "🚀 OMNI-GOD V5: Live-Update [$(date +'%d.%m.%Y %H:%M')]" && git push)
+          # Fügt alles hinzu: HTML, Datenbank, Logfile und ALLE generierten Bilder/Screenshots (*.png)
+          git add index.html bot_data.db ultra_god_mode_v5_HYBRID.log *.png -f || echo "Dateien fehlen, fahre trotzdem fort"
+          
+          # Prüft, ob es Änderungen gibt, und pusht sie dann live
+          git diff --staged --quiet || (git commit -m "🚀 OMNI-GOD V5: Data & Screenshots Update [$(date +'%d.%m.%Y %H:%M')]" && git push)
 
-      - name: Upload Artifacts
+      - name: Upload Artifacts (Sicherheits-Backup)
         if: always()
         uses: actions/upload-artifact@v4
         with:
           name: bot-live-status-dashboard
           path: |
             index.html
-            latest_action.png
+            *.png
             ultra_god_mode_v5_HYBRID.log
             bot_data.db
-          retention-days: 1
+          retention-days: 3 # Speichert die Screenshots und DB für 3 Tage als ZIP-Download
