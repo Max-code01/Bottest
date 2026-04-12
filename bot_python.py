@@ -424,7 +424,7 @@ class OmniGodBot:
         
         # Email Config (Dein Original)
         self.email_sender = "max.schule13@gmail.com"
-        self.email_password = "Max1234567890123" # DEIN APP PASSWORT HIER EINTRAGEN ODER LEER LASSEN
+        self.email_password = "xayx iugd ehpt yilh"
         self.email_receiver = "max.schule13@gmail.com"
 
     async def start(self):
