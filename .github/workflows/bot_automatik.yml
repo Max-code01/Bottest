@@ -2,8 +2,8 @@ name: OMNI-GOD V5 EXTREME RUNNER
 
 on:
   schedule:
-    # Läuft jede Stunde (wie von dir eingestellt)
-    - cron: '0 * * * *' 
+    # Läuft alle 30 Minuten (angepasst für höhere Frequenz)
+    - cron: '*/30 * * * *' 
   workflow_dispatch: # Erlaubt manuellen Start jederzeit
 
 permissions:
@@ -17,7 +17,7 @@ jobs:
       - name: Checkout Code
         uses: actions/checkout@v3
         with:
-          fetch-depth: 0 # Wichtig, damit der Push am Ende funktioniert
+          fetch-depth: 0 
 
       - name: Set up Python
         uses: actions/setup-python@v4
@@ -27,9 +27,7 @@ jobs:
       - name: Install Dependencies
         run: |
           python -m pip install --upgrade pip
-          # Installation aller nötigen Module für den V5 Hybrid
           pip install playwright google-generativeai
-          # Playwright Browser und System-Abhängigkeiten (Linux-Bibliotheken)
           playwright install chromium
           playwright install-deps chromium
 
@@ -37,30 +35,21 @@ jobs:
         env:
           GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          EMAIL_PASSWORD: ${{ secrets.EMAIL_PASSWORD }}
-        # xvfb-run simuliert einen Monitor, damit der Browser "denken" kann, er sei sichtbar
-        
+          EMAIL_PASSWORD: ${{ secrets.EMAIL_PASSWORD }} # Muss in GitHub Secrets angelegt sein
         run: xvfb-run --auto-servernum python bot_python.py
 
       - name: Save Data & Push Dashboard
-        # Dieser Part sorgt dafür, dass alles unter https://max-code01.github.io/Bottest/ landet
         if: always()
         run: |
-          # Hier kannst du auch deine eigene E-Mail eintragen, falls du willst
           git config --global user.name "OmniGod-Bot-System"
-          git config --global user.email "max.schule13@gmail.com
+          git config --global user.email "max.schule13@gmail.com"
           
-          # Sicherstellen, dass die Dateien existieren, bevor sie hinzugefügt werden
-          git add index.html bot_data.db ultra_god_mode_v5_HYBRID.log latest_action.png || echo "Einige Dateien fehlen noch"
+          git add index.html bot_data.db ultra_god_mode_v5_HYBRID.log latest_action.png || echo "Dateien fehlen"
           
-          # Der Commit speichert den aktuellen Stand mit Zeitstempel
-          git commit -m "🚀 OMNI-GOD V5: Live-Update [$(date +'%d.%m.%Y %H:%M')]" || echo "Keine neuen Änderungen zum Speichern"
-          
-          # Schiebt die Änderungen live ins Repository
-          git push
+          # Nur committen, wenn es echte Änderungen gibt, um Fehler zu vermeiden
+          git diff --quiet && git diff --staged --quiet || (git commit -m "🚀 OMNI-GOD V5: Live-Update [$(date +'%d.%m.%Y %H:%M')]" && git push)
 
-      - name: Upload Artifacts (Zusätzliches Backup)
-        # Erstellt eine Zip-Datei im Actions-Tab als Sicherheitskopie
+      - name: Upload Artifacts
         if: always()
         uses: actions/upload-artifact@v4
         with:
@@ -70,5 +59,4 @@ jobs:
             latest_action.png
             ultra_god_mode_v5_HYBRID.log
             bot_data.db
-            error_*.png
           retention-days: 1
